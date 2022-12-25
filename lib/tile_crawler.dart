@@ -7,26 +7,12 @@ import 'dart:math';
 //https://a.tile.openstreetmap.org/{z}/{x}/{y}.png
 //https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90
 
-void main(List<String> arguments) {
-  TileDownloader crawler = TileDownloader(DownloadOptions(
-      tileUrlFormat:
-          "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
-      topLeft: LatLng(latitude: 39.895887, longitude: 32.711645),
-      bottomRight: LatLng(latitude: 39.883798, longitude: 32.731168),
-      minZoomLevel: 10,
-      downloadFolder: "./tiles",
-      client: HttpClient(),
-      maxZoomLevel: 18));
-
-  crawler.startDownload();
-}
-
-class TileDownloader {
+class TileCrawler {
   final int tileSize = 256;
   final DownloadOptions options;
   final List<_XYZ> _queue = [];
 
-  TileDownloader(this.options);
+  TileCrawler(this.options);
 
   void startDownload() {
     _queue.clear();
