@@ -51,7 +51,7 @@ class TileCrawler {
         z: level);
   }
 
-  void _calculateRectIN(_Rectangle rect, _XYZ? inCurrent) async {
+  Future<void> _calculateRectIN(_Rectangle rect, _XYZ? inCurrent) async {
     var current =
         inCurrent ??= _XYZ(x: rect.startX, y: rect.startY, z: rect.level);
 
@@ -70,7 +70,7 @@ class TileCrawler {
     } else {
       current = current.copyWith(x: current.x + 1);
     }
-    _calculateRectIN(rect, current);
+    await _calculateRectIN(rect, current);
   }
 
   Future<void> _downloadCurrent(_XYZ current) async {
