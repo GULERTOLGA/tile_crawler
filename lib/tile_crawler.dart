@@ -1,11 +1,17 @@
 library tile_crawler;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
 //https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}
 //https://a.tile.openstreetmap.org/{z}/{x}/{y}.png
 //https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90
+
+typedef OnStart = void Function(int totalTileCount, double area);
+
+typedef OnProcess = void Function(int tileDownloaded, int z, int x, int y);
+typedef OnEnd = void Function();
 
 class TileCrawler {
   final int tileSize = 256;
@@ -14,13 +20,31 @@ class TileCrawler {
 
   TileCrawler(this.options);
 
-  void startDownload() {
-    _queue.clear();
+  bool _cancel = false;
 
-    for (int i = options.minZoomLevel; i <= options.maxZoomLevel; i++) {
-      _calculateRectIN(
-          _calculateRect(options.topLeft, options.bottomRight, i), null);
+  Future<void> download(
+      {OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd}) async {
+    _queue.clear();
+    _cancel = false;
+    for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
+      _calculateRectIN(_calculateRect(options.topLeft, options.bottomRight, z));
     }
+    if (onStart != null) {
+      onStart(_queue.length, 1500.0);
+    }
+    var startCount = _queue.length;
+    while (!_cancel && _queue.isNotEmpty) {
+      var xyz = _queue.removeLast();
+      await _downloadCurrent(xyz);
+      if (onProcess != null) {
+        onProcess(startCount - _queue.length, xyz.z, xyz.x, xyz.y);
+      }
+    }
+  }
+
+  void cancel() {
+    _cancel = true;
+    _queue.clear();
   }
 
   _Rectangle _calculateRect(LatLng topLeft, LatLng bottomRight, int level) {
@@ -51,26 +75,14 @@ class TileCrawler {
         z: level);
   }
 
-  Future<void> _calculateRectIN(_Rectangle rect, _XYZ? inCurrent) async {
-    var current =
-        inCurrent ??= _XYZ(x: rect.startX, y: rect.startY, z: rect.level);
+  _calculateRectIN(_Rectangle rect) {
+    for (int x = rect.startX; x <= rect.endX; x++) {
+      for (int y = rect.startY; y <= rect.endY; y++) {
+        var xyz = _XYZ(x: x, y: y, z: rect.level);
 
-    print(current);
-    _queue.add(current);
-    await _downloadCurrent(current);
-
-    if (current.x >= rect.endX && current.y >= rect.endY) {
-      return;
-    } else if (current.x >= rect.endX && current.y < rect.endY) {
-      current = current.copyWith(y: current.y + 1);
+        _queue.add(xyz);
+      }
     }
-
-    if (current.x >= rect.endX) {
-      current = current.copyWith(x: rect.startX);
-    } else {
-      current = current.copyWith(x: current.x + 1);
-    }
-    await _calculateRectIN(rect, current);
   }
 
   Future<void> _downloadCurrent(_XYZ current) async {

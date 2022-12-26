@@ -34,22 +34,41 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  int _tileCount = 0;
+  int _tileDownloaded = 0;
+  int _x = 0;
+  int _y = 0;
+  int _z = 0;
 
   void _incrementCounter() async {
     var dir = await getApplicationDocumentsDirectory();
+//40.035512, 32.530766
 
     TileCrawler crawler = TileCrawler(DownloadOptions(
         tileUrlFormat:
             "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
-        topLeft: LatLng(latitude: 39.895887, longitude: 32.711645),
+        topLeft: LatLng(latitude: 40.035512, longitude: 32.530766),
         bottomRight: LatLng(latitude: 39.883798, longitude: 32.731168),
         minZoomLevel: 10,
         downloadFolder: dir.path,
         client: HttpClient(),
-        maxZoomLevel: 18));
+        maxZoomLevel: 19));
 
-    crawler.startDownload();
+    crawler.download(
+        onStart: (totalTileCount, area) {
+          setState(() {
+            _tileCount = totalTileCount;
+          });
+        },
+        onProcess: (tileDownloaded, z, x, y) {
+          setState(() {
+            _tileDownloaded = tileDownloaded;
+            _x = x;
+            _y = y;
+            _z = z;
+          });
+        },
+        onEnd: () {});
   }
 
   @override
@@ -62,11 +81,11 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            Text(
+              'Total $_tileCount,(z:$_z,x:$_x, y:$_y)  ',
             ),
             Text(
-              '$_counter',
+              '$_tileDownloaded',
               style: Theme.of(context).textTheme.headline4,
             ),
           ],
