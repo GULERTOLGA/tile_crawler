@@ -42,13 +42,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _incrementCounter() async {
     var dir = await getApplicationDocumentsDirectory();
-//40.035512, 32.530766
+//39.898931, 32.701024
+//39.845293, 32.803630
 
     TileCrawler crawler = TileCrawler(DownloadOptions(
         tileUrlFormat:
             "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
-        topLeft: LatLng(latitude: 40.035512, longitude: 32.530766),
-        bottomRight: LatLng(latitude: 39.883798, longitude: 32.731168),
+        topLeft: LatLng(latitude: 39.898931, longitude: 32.701024),
+        bottomRight: LatLng(latitude: 39.845293, longitude: 32.803630),
         minZoomLevel: 10,
         downloadFolder: dir.path,
         client: HttpClient(),
