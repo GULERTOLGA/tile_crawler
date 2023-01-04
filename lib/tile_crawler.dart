@@ -183,3 +183,57 @@ class _XYZ {
     return "$z/$x/$y";
   }
 }
+
+class MapProviders {
+  static const String googleStreets =
+      "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}";
+
+  static const String openStreetMap =
+      "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+  static const String bingSattellite =
+      "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90";
+}
+
+class MapboxStyles {
+  static const String MAPBOX_STREETS = "mapbox://styles/mapbox/streets-v11";
+
+  /// Outdoors: A general-purpose style tailored to outdoor activities. Using this constant means
+  /// your map style will always use the latest version and may change as we improve the style.
+  static const String OUTDOORS = "mapbox://styles/mapbox/outdoors-v11";
+
+  /// Light: Subtle light backdrop for data visualizations. Using this constant means your map
+  /// style will always use the latest version and may change as we improve the style.
+  static const String LIGHT = "mapbox://styles/mapbox/light-v10";
+
+  /// Empty: Basic empty style
+  static const String EMPTY = "mapbox://styles/mapbox/empty-v8";
+
+  /// Dark: Subtle dark backdrop for data visualizations. Using this constant means your map style
+  /// will always use the latest version and may change as we improve the style.
+  static const String DARK = "mapbox://styles/mapbox/dark-v10";
+
+  /// Satellite: A beautiful global satellite and aerial imagery layer. Using this constant means
+  /// your map style will always use the latest version and may change as we improve the style.
+  static const String SATELLITE = "mapbox://styles/mapbox/satellite-v9";
+
+  /// Satellite Streets: Global satellite and aerial imagery with unobtrusive labels. Using this
+  /// constant means your map style will always use the latest version and may change as we
+  /// improve the style.
+  static const String SATELLITE_STREETS =
+      "mapbox://styles/mapbox/satellite-streets-v11";
+
+  /// Traffic Day: Color-coded roads based on live traffic congestion data. Traffic data is currently
+  /// available in
+  /// <a href="https://www.mapbox.com/help/how-directions-work/#traffic-data">these select
+  /// countries</a>. Using this constant means your map style will always use the latest version and
+  /// may change as we improve the style.
+  static const String TRAFFIC_DAY = "mapbox://styles/mapbox/traffic-day-v2";
+
+  /// Traffic Night: Color-coded roads based on live traffic congestion data, designed to maximize
+  /// legibility in low-light situations. Traffic data is currently available in
+  /// <a href="https://www.mapbox.com/help/how-directions-work/#traffic-data">these select
+  /// countries</a>. Using this constant means your map style will always use the latest version and
+  /// may change as we improve the style.
+  static const String TRAFFIC_NIGHT = "mapbox://styles/mapbox/traffic-night-v2";
+}
