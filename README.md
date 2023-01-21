@@ -11,17 +11,7 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/developing-packages). 
 -->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+A Flutter package that downloads map tiles for offline using.
 
 ## Usage
 
@@ -29,11 +19,14 @@ TODO: Include short and useful examples for package users. Add longer examples
 to `/example` folder. 
 
 ```dart
-const like = 'sample';
+    TileCrawler crawler = TileCrawler(DownloadOptions(
+    tileUrlFormat:
+    "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
+    topLeft: LatLng(latitude: 39.898931, longitude: 32.701024),
+    bottomRight: LatLng(latitude: 39.845293, longitude: 32.803630),
+    minZoomLevel: 10,
+    downloadFolder: dir.path,
+    client: HttpClient(),
+    maxZoomLevel: 19));
+
 ```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
