@@ -21,7 +21,7 @@ to `/example` folder.
 ```dart
     TileCrawler crawler = TileCrawler(DownloadOptions(
     tileUrlFormat:
-    "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
+    "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
     topLeft: LatLng(latitude: 39.898931, longitude: 32.701024),
     bottomRight: LatLng(latitude: 39.845293, longitude: 32.803630),
     minZoomLevel: 10,
