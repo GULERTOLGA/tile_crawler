@@ -15,8 +15,6 @@ A Flutter package that downloads map tiles for offline using.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
 
 ```dart
     TileCrawler crawler = TileCrawler(DownloadOptions(
