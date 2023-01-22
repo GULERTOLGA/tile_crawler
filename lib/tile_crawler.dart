@@ -33,12 +33,22 @@ class TileCrawler {
       onStart(_queue.length, 1500.0);
     }
     var startCount = _queue.length;
+    if(options.clearFolder)
+      {
+        var newDir = Directory(options.downloadFolder);
+        if (newDir.existsSync()) {
+          await newDir.delete(recursive: true);
+        }
+      }
     while (!_cancel && _queue.isNotEmpty) {
       var xyz = _queue.removeLast();
       await _downloadCurrent(xyz);
       if (onProcess != null) {
         onProcess(startCount - _queue.length, xyz.z, xyz.x, xyz.y);
       }
+    }
+    if (onEnd != null) {
+      onEnd();
     }
   }
 
@@ -119,6 +129,7 @@ class DownloadOptions {
   final String tileUrlFormat;
   final String downloadFolder;
   final HttpClient client;
+  final bool clearFolder;
 
   DownloadOptions(
       {required this.topLeft,
@@ -126,9 +137,11 @@ class DownloadOptions {
       required this.minZoomLevel,
       required this.maxZoomLevel,
       required this.tileUrlFormat,
+      bool? clearFolder,
       HttpClient? client,
       required this.downloadFolder})
-      : client = client ?? HttpClient();
+      : client = client ?? HttpClient(),
+        clearFolder = clearFolder ?? false;
 }
 
 class _Rectangle {
