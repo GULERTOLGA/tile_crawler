@@ -4,12 +4,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-//https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}
-//https://a.tile.openstreetmap.org/{z}/{x}/{y}.png
-//https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90
-
 typedef OnStart = void Function(int totalTileCount, double area);
-
 typedef OnProcess = void Function(int tileDownloaded, int z, int x, int y);
 typedef OnEnd = void Function();
 
@@ -30,16 +25,20 @@ class TileCrawler {
       _calculateRectIN(_calculateRect(options.topLeft, options.bottomRight, z));
     }
     if (onStart != null) {
-      onStart(_queue.length, 1500.0);
+      var area = _calculateArea(
+          options.topLeft.latitude,
+          options.topLeft.longitude,
+          options.bottomRight.latitude,
+          options.bottomRight.longitude);
+      onStart(_queue.length, area);
     }
     var startCount = _queue.length;
-    if(options.clearFolder)
-      {
-        var newDir = Directory(options.downloadFolder);
-        if (newDir.existsSync()) {
-          await newDir.delete(recursive: true);
-        }
+    if (options.clearFolder) {
+      var newDir = Directory(options.downloadFolder);
+      if (newDir.existsSync()) {
+        await newDir.delete(recursive: true);
       }
+    }
     while (!_cancel && _queue.isNotEmpty) {
       var xyz = _queue.removeLast();
       await _downloadCurrent(xyz);
@@ -50,6 +49,15 @@ class TileCrawler {
     if (onEnd != null) {
       onEnd();
     }
+  }
+
+  double _calculateArea(double lat1, double lng1, double lat2, double lng2) {
+    var r = 6371000;
+    double area = ((lng2 - lng1) * pi / 180) *
+        ((sin(lat2 * pi / 180) - sin(lat1 * pi / 180)) *
+            (cos(lng1 * pi / 180) + cos(lng2 * pi / 180)) /
+            2);
+    return area * pow(r, 2);
   }
 
   void cancel() {
