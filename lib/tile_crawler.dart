@@ -33,21 +33,7 @@ class TileCrawler {
     for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
       _calculateRectIN(_calculateRect(options.topLeft, options.bottomRight, z));
     }
-
     downloadWithIsolate(onStart, onProcess, onEnd);
-    /*  while (!_cancel && _queue.isNotEmpty) {
-      var xyzTemp = _queue.removeLast();
-      _downloadCurrent(xyzTemp)
-          .then((xyz) => {
-                if (onProcess != null)
-                  {onProcess(startCount - _queue.length, xyz.z, xyz.x, xyz.y)}
-              })
-          .whenComplete(() {
-        if (_queue.isEmpty && onEnd != null) {
-          onEnd();
-        }
-      });
-    } */
   }
 
   void cancel() {
@@ -93,17 +79,6 @@ class TileCrawler {
     }
   }
 
-  Future<_XYZ> _downloadCurrent(_XYZ current) async {
-    /* return await downloadWithIsolate(url, current).then((value) => {
-          //   if (value == false) {downloadWithoutIsolate(url, current)}
-          return value;
-        })  */
-    // await downloadWithIsolate(current);
-    //await downloadWithoutIsolate(url, current);
-
-    return current;
-  }
-
   Future<void> downloadWithoutIsolate(_XYZ current) async {
     var url = options.tileUrlFormat.toLowerCase();
     if (url.contains("{quadkey}")) {
@@ -122,25 +97,26 @@ class TileCrawler {
     await response.pipe(File('${dirPath.path}/${current.y}.png').openWrite());
   }
 
-  Future<bool?> downloadWithIsolate(
+  Future<void> downloadWithIsolate(
       OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd) async {
     var startCount = _queue.length;
     installedTileCount = startCount;
     _completedIsolateCount = 0;
     int concurrent = 10;
-    int remainingValue = _queue.length % concurrent;
-    int divisiorValue = (_queue.length - concurrent) ~/ concurrent;
+    int remainingValue = startCount % concurrent;
+    int divisiorValue = (startCount - remainingValue) ~/ concurrent;
+
     List parsedList = [];
-    onStart?.call(_queue.length, 1500.0);
+    onStart?.call(startCount, 1500.0);
     for (int i = 0; i < concurrent; i++) {
       if (i == concurrent - 1) {
-        parsedList.add(_queue.sublist(
-            i * divisiorValue, i * divisiorValue + remainingValue));
+        parsedList.add(_queue.sublist(i * divisiorValue, startCount));
       } else {
         parsedList.add(_queue.sublist(
             i * divisiorValue, i * divisiorValue + divisiorValue));
       }
     }
+
     for (var i = 0; i < concurrent; i++) {
       final receivePort = ReceivePort();
       Isolate.spawn(_download, {
@@ -149,24 +125,32 @@ class TileCrawler {
         'client': options.client,
       });
       receivePort.listen((message) {
-        if (message == "completed") {
-          _completedIsolateCount++;
-          dev.log("$_completedIsolateCount", name: "TileCrawler:completed");
-          if (_completedIsolateCount == concurrent) {
+        if (message is DownloadStatus) {
+          if (message.status == DownloadStatusEnum.completed) {
+            _completedIsolateCount++;
+            dev.log("$_completedIsolateCount",
+                name: "TileCrawler:completed", level: 2000);
+            if (_completedIsolateCount == concurrent) {
+              if (onEnd != null) {
+                onEnd.call();
+              }
+            }
+          } else if (message.status == DownloadStatusEnum.error) {
             if (onEnd != null) {
               onEnd.call();
             }
-          }
-        } else if (message is Map) {
-          // handle error TODO: handle error
-          if (onEnd != null) {
-            onEnd.call();
-          }
-        } else if (message is _XYZ) {
-          installedTileCount--;
-          if (onProcess != null) {
-            onProcess.call(_queue.length - installedTileCount, message.z,
-                message.x, message.y);
+          } else if (message.status == DownloadStatusEnum.downloading) {
+            if (onProcess != null) {
+              dev.log(message.xyz.toString(),
+                  name: "TileCrawler:downloaded", level: 500);
+              print(installedTileCount);
+              onProcess.call(
+                _queue.length - --installedTileCount,
+                message.xyz!.z,
+                message.xyz!.x,
+                message.xyz!.y,
+              );
+            }
           }
         }
       });
@@ -189,7 +173,7 @@ class TileCrawler {
               .replaceAll("{y}", current.y.toString())
               .replaceAll("{z}", current.z.toString());
         }
-        dev.log(url.toString());
+
         final request = await client.getUrl(Uri.parse(url));
         final response = await request.close();
         final String pathString =
@@ -197,14 +181,12 @@ class TileCrawler {
         final dirPath = await Directory(pathString).create(recursive: true);
         await response
             .pipe(File('${dirPath.path}/${current.y}.png').openWrite());
-        sendPort.send(current);
-        dev.log("${current.z} ${current.x} ${current.y}",
-            name: "TileCrawler:downloaded", level: 1000);
+        sendPort.send(DownloadStatus.downloading(current));
       }
-      sendPort.send("completed");
+      sendPort.send(DownloadStatus.completed());
     } catch (e) {
-      dev.log(e.toString(), name: "error", level: 1000, error: e);
-      sendPort.send({'error': e});
+      dev.log(e.toString(), name: "TileCrawler:error", level: 1000, error: e);
+      sendPort.send(DownloadStatus.error(e.toString()));
     }
   }
 }
@@ -297,4 +279,21 @@ class MapProviders {
 
   static const String bingSattellite =
       "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90";
+}
+
+enum DownloadStatusEnum { downloading, completed, error }
+
+class DownloadStatus {
+  final DownloadStatusEnum status;
+  final _XYZ? xyz;
+  final Object? error;
+
+  DownloadStatus({required this.status, this.xyz, this.error});
+
+  factory DownloadStatus.completed() =>
+      DownloadStatus(status: DownloadStatusEnum.completed);
+  factory DownloadStatus.error(String error) =>
+      DownloadStatus(status: DownloadStatusEnum.error, error: error);
+  factory DownloadStatus.downloading(_XYZ xyz) =>
+      DownloadStatus(status: DownloadStatusEnum.downloading, xyz: xyz);
 }
