@@ -34,8 +34,6 @@ class TileCrawler {
       _calculateRectIN(_calculateRect(options.topLeft, options.bottomRight, z));
     }
 
-    var startCount = _queue.length;
-    installedTileCount = startCount;
     downloadWithIsolate(onStart, onProcess, onEnd);
     /*  while (!_cancel && _queue.isNotEmpty) {
       var xyzTemp = _queue.removeLast();
@@ -126,6 +124,9 @@ class TileCrawler {
 
   Future<bool?> downloadWithIsolate(
       OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd) async {
+    var startCount = _queue.length;
+    installedTileCount = startCount;
+    _completedIsolateCount = 0;
     int concurrent = 10;
     int remainingValue = _queue.length % concurrent;
     int divisiorValue = (_queue.length - concurrent) ~/ concurrent;
@@ -148,7 +149,7 @@ class TileCrawler {
         'client': options.client,
       });
       receivePort.listen((message) {
-        if (message == "complete") {
+        if (message == "completed") {
           _completedIsolateCount++;
           dev.log("$_completedIsolateCount", name: "TileCrawler:completed");
           if (_completedIsolateCount == concurrent) {
@@ -157,7 +158,7 @@ class TileCrawler {
             }
           }
         } else if (message is Map) {
-// handle error TODO: handle error
+          // handle error TODO: handle error
           if (onEnd != null) {
             onEnd.call();
           }
@@ -200,7 +201,7 @@ class TileCrawler {
         dev.log("${current.z} ${current.x} ${current.y}",
             name: "TileCrawler:downloaded", level: 1000);
       }
-      sendPort.send("complete");
+      sendPort.send("completed");
     } catch (e) {
       dev.log(e.toString(), name: "error", level: 1000, error: e);
       sendPort.send({'error': e});

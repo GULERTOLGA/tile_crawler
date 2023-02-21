@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
         minZoomLevel: 10,
         downloadFolder: dir.path,
         client: HttpClient(),
-        maxZoomLevel: 16));
+        maxZoomLevel: 15));
 
     crawler.download(onStart: (totalTileCount, area) {
       setState(() {
