@@ -99,21 +99,21 @@ class TileCrawler {
 
   Future<void> downloadWithIsolate(
       OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd) async {
-    var startCount = _queue.length;
+    var startCount = 255;
     installedTileCount = startCount;
     _completedIsolateCount = 0;
     int concurrent = 10;
     int remainingValue = startCount % concurrent;
-    int divisiorValue = (startCount - remainingValue) ~/ concurrent;
+    int divisorValue = (startCount - remainingValue) ~/ (concurrent - 1);
 
     List parsedList = [];
     onStart?.call(startCount, 1500.0);
     for (int i = 0; i < concurrent; i++) {
       if (i == concurrent - 1) {
-        parsedList.add(_queue.sublist(i * divisiorValue, startCount));
+        parsedList.add(_queue.sublist(i * divisorValue, startCount));
       } else {
-        parsedList.add(_queue.sublist(
-            i * divisiorValue, i * divisiorValue + divisiorValue));
+        parsedList.add(
+            _queue.sublist(i * divisorValue, i * divisorValue + divisorValue));
       }
     }
 
