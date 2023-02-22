@@ -99,7 +99,7 @@ class TileCrawler {
 
   Future<void> downloadWithIsolate(
       OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd) async {
-    var startCount = 255;
+    var startCount = _queue.length;
     installedTileCount = startCount;
     _completedIsolateCount = 0;
     int concurrent = 10;
