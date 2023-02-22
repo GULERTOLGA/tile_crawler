@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -44,32 +46,43 @@ class _MyHomePageState extends State<MyHomePage> {
     var dir = await getApplicationDocumentsDirectory();
 //39.898931, 32.701024
 //39.845293, 32.803630
+    var endTimeMillis;
+    var startTimeMillis = DateTime.now().millisecondsSinceEpoch;
 
     TileCrawler crawler = TileCrawler(DownloadOptions(
-        tileUrlFormat:
+        /*   tileUrlFormat:
             "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
+            https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}
+            ['0', '1', '2', '3']
+      */
+        tileUrlFormat: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
         topLeft: LatLng(latitude: 39.898931, longitude: 32.701024),
         bottomRight: LatLng(latitude: 39.845293, longitude: 32.803630),
         minZoomLevel: 10,
         downloadFolder: dir.path,
         client: HttpClient(),
-        maxZoomLevel: 19));
+        maxZoomLevel: 16));
 
-    crawler.download(
-        onStart: (totalTileCount, area) {
-          setState(() {
-            _tileCount = totalTileCount;
-          });
-        },
-        onProcess: (tileDownloaded, z, x, y) {
-          setState(() {
-            _tileDownloaded = tileDownloaded;
-            _x = x;
-            _y = y;
-            _z = z;
-          });
-        },
-        onEnd: () {});
+    crawler.download(onStart: (totalTileCount, area) {
+      setState(() {
+        _tileCount = totalTileCount;
+      });
+    }, onProcess: (tileDownloaded, z, x, y) {
+      // log("tileDownloaded: $tileDownloaded, z: $z, x: $x, y: $y");
+      setState(() {
+        _tileDownloaded = tileDownloaded;
+        _x = x;
+        _y = y;
+        _z = z;
+      });
+    }, onEnd: () {
+      log("end");
+      endTimeMillis = DateTime.now().millisecondsSinceEpoch;
+      var currentMillisecondsSinceEpoch =
+          DateTime.now().millisecondsSinceEpoch - startTimeMillis;
+
+      log("time: $currentMillisecondsSinceEpoch");
+    });
   }
 
   @override
