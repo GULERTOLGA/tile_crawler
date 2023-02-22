@@ -143,7 +143,6 @@ class TileCrawler {
             if (onProcess != null) {
               dev.log(message.xyz.toString(),
                   name: "TileCrawler:downloaded", level: 500);
-              print(installedTileCount);
               onProcess.call(
                 _queue.length - --installedTileCount,
                 message.xyz!.z,
