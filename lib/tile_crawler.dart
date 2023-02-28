@@ -36,7 +36,8 @@ class TileCrawler with TileCrawlerHelper {
   bool _cancel = false;
   void onInitial() {
     for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
-      calculateRectIN(calculateRect(options.topLeft, options.bottomRight, z));
+      _queue.addAll(calculateRectIN(
+          calculateRect(options.topLeft, options.bottomRight, z)));
     }
   }
 
