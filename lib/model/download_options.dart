@@ -17,5 +17,14 @@ class DownloadOptions {
       required this.tileUrlFormat,
       HttpClient? client,
       required this.downloadFolder})
-      : client = client ?? HttpClient();
+      : assert(tileUrlFormat.isNotEmpty),
+        assert(downloadFolder.isNotEmpty),
+        assert(topLeft.latitude != 0),
+        assert(topLeft.longitude != 0),
+        assert(bottomRight.latitude != 0),
+        assert(bottomRight.longitude != 0),
+        assert(minZoomLevel != 0),
+        assert(maxZoomLevel != 0),
+        assert(minZoomLevel <= maxZoomLevel),
+        client = client ?? HttpClient();
 }

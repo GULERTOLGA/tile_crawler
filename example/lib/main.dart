@@ -102,6 +102,10 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_tileDownloaded',
               style: Theme.of(context).textTheme.headline4,
             ),
+            Text(
+              '$_tileDownloaded',
+              style: Theme.of(context).textTheme.headline4,
+            ),
           ],
         ),
       ),

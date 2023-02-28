@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:tile_crawler/model/crawler_summary.dart';
 import 'package:tile_crawler/tile_crawler_helper.dart';
 part 'model/xyz.dart';
 part 'model/download_options.dart';
@@ -24,7 +25,8 @@ typedef OnEnd = void Function();
 typedef OnComplete = void Function(bool success, XYZ xyz);
 
 class TileCrawler with TileCrawlerHelper {
-  final int tileSize = 256;
+  int tileCount = 0;
+  double _area = 0;
   final DownloadOptions options;
   static final List<XYZ> _queue = [];
   static int _completedIsolateCount = 0;
@@ -32,13 +34,30 @@ class TileCrawler with TileCrawlerHelper {
   TileCrawler(this.options);
 
   bool _cancel = false;
+  void onInitial() {
+    for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
+      calculateRectIN(calculateRect(options.topLeft, options.bottomRight, z));
+    }
+  }
+
+  TileCrawlerSummary getCrawlerSummary() {
+    onInitial();
+    return TileCrawlerSummary(getArea(), tileCount);
+  }
+
+  double getArea() {
+    _area = calculateArea(options.topLeft.latitude, options.topLeft.longitude,
+        options.bottomRight.latitude, options.bottomRight.longitude);
+    return _area;
+  }
 
   Future<void> download(
       {OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd}) async {
     _queue.clear();
     _cancel = false;
-    for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
-      calculateRectIN(calculateRect(options.topLeft, options.bottomRight, z));
+    onInitial();
+    if (onStart != null) {
+      onStart(_queue.length, _area);
     }
     downloadWithIsolate(onStart, onProcess, onEnd);
   }
@@ -46,24 +65,6 @@ class TileCrawler with TileCrawlerHelper {
   void cancel() {
     _cancel = true;
     _queue.clear();
-  }
-
-  Future<void> downloadWithoutIsolate(XYZ current) async {
-    var url = options.tileUrlFormat.toLowerCase();
-    if (url.contains("{quadkey}")) {
-      url = url.replaceAll("{quadkey}", current.toQuadKey());
-    } else {
-      url = url
-          .replaceAll("{x}", current.x.toString())
-          .replaceAll("{y}", current.y.toString())
-          .replaceAll("{z}", current.z.toString());
-    }
-    final request = await options.client.getUrl(Uri.parse(url));
-    final response = await request.close();
-    final String pathString =
-        "${options.downloadFolder}/${current.z}/${current.x}";
-    final dirPath = await Directory(pathString).create(recursive: true);
-    await response.pipe(File('${dirPath.path}/${current.y}.png').openWrite());
   }
 
   Future<void> downloadWithIsolate(
@@ -76,7 +77,7 @@ class TileCrawler with TileCrawlerHelper {
     int divisorValue = (startCount - remainingValue) ~/ (concurrent - 1);
 
     List parsedList = [];
-    onStart?.call(startCount, 1500.0);
+
     for (int i = 0; i < concurrent; i++) {
       if (i == concurrent - 1) {
         parsedList.add(_queue.sublist(i * divisorValue, startCount));
