@@ -42,13 +42,4 @@ mixin TileCrawlerHelper {
     }
     return _queue;
   }
-
-  double calculateArea(double lat1, double lng1, double lat2, double lng2) {
-    var r = 6371000;
-    double area = ((lng2 - lng1) * pi / 180) *
-        ((sin(lat2 * pi / 180) - sin(lat1 * pi / 180)) *
-            (cos(lng1 * pi / 180) + cos(lng2 * pi / 180)) /
-            2);
-    return area * pow(r, 2);
-  }
 }

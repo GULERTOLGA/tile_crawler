@@ -24,7 +24,7 @@ typedef OnProcess = void Function(int tileDownloaded, int z, int x, int y);
 typedef OnEnd = void Function();
 typedef OnComplete = void Function(bool success, XYZ xyz);
 
-class TileCrawler with TileCrawlerHelper {
+class TileCrawler {
   int tileCount = 0;
   double _area = 0;
   final DownloadOptions options;
@@ -34,29 +34,12 @@ class TileCrawler with TileCrawlerHelper {
   TileCrawler(this.options);
 
   bool _cancel = false;
-  void onInitial() {
-    for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
-      _queue.addAll(calculateRectIN(
-          calculateRect(options.topLeft, options.bottomRight, z)));
-    }
-  }
-
-  TileCrawlerSummary getCrawlerSummary() {
-    onInitial();
-    return TileCrawlerSummary(getArea(), tileCount);
-  }
-
-  double getArea() {
-    _area = calculateArea(options.topLeft.latitude, options.topLeft.longitude,
-        options.bottomRight.latitude, options.bottomRight.longitude);
-    return _area;
-  }
 
   Future<void> download(
       {OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd}) async {
     _queue.clear();
     _cancel = false;
-    onInitial();
+    _queue.addAll(options.queue);
     if (onStart != null) {
       onStart(_queue.length, _area);
     }
