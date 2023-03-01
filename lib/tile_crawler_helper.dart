@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:latlong2/latlong.dart';
 import 'package:tile_crawler/tile_crawler.dart';
 
 mixin TileCrawlerHelper {

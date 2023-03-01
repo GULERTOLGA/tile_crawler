@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tile_crawler/tile_crawler.dart';
 
@@ -41,6 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int _x = 0;
   int _y = 0;
   int _z = 0;
+  TileCrawler? _crawler;
 
   void _incrementCounter() async {
     var dir = await getApplicationDocumentsDirectory();
@@ -56,13 +58,13 @@ class _MyHomePageState extends State<MyHomePage> {
             ['0', '1', '2', '3']
       */
         tileUrlFormat: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        topLeft: LatLng(latitude: 39.898931, longitude: 32.701024),
-        bottomRight: LatLng(latitude: 39.845293, longitude: 32.803630),
-        minZoomLevel: 10,
+        topLeft: LatLng(39.898931, 32.701024),
+        bottomRight: LatLng(39.845293, 32.803630),
+        minZoomLevel: 13,
         downloadFolder: dir.path,
         client: HttpClient(),
-        maxZoomLevel: 15));
-
+        maxZoomLevel: 18));
+    _crawler = crawler;
     crawler.download(onStart: (totalTileCount, area) {
       setState(() {
         _tileCount = totalTileCount;
@@ -109,11 +111,26 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          FloatingActionButton(
+            onPressed: _cancelDownload,
+            tooltip: 'Increment',
+            child: const Icon(Icons.cancel),
+          ),
+          FloatingActionButton(
+            onPressed: _incrementCounter,
+            tooltip: 'Increment',
+            child: const Icon(Icons.add),
+          ),
+        ],
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  void _cancelDownload() {
+    _crawler?.cancel();
   }
 }

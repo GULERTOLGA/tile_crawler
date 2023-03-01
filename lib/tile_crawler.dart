@@ -6,12 +6,13 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:latlong2/latlong.dart';
 import 'package:tile_crawler/model/crawler_summary.dart';
 import 'package:tile_crawler/tile_crawler_helper.dart';
 part 'model/xyz.dart';
 part 'model/download_options.dart';
 part 'model/rectangle.dart';
-part 'model/lat_lng.dart';
+
 part 'model/download_status.dart';
 part 'model/map_providers.dart';
 //https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}
@@ -26,13 +27,13 @@ typedef OnComplete = void Function(bool success, XYZ xyz);
 
 class TileCrawler {
   int tileCount = 0;
-  double _area = 0;
+
   final DownloadOptions options;
   static final List<XYZ> _queue = [];
   static int _completedIsolateCount = 0;
   static int installedTileCount = 0;
   TileCrawler(this.options);
-
+  final List<Isolate?> _isolateList = [];
   bool _cancel = false;
 
   Future<void> download(
@@ -41,14 +42,26 @@ class TileCrawler {
     _cancel = false;
     _queue.addAll(options.queue);
     if (onStart != null) {
-      onStart(_queue.length, _area);
+      onStart(_queue.length, options.area);
     }
     downloadWithIsolate(onStart, onProcess, onEnd);
   }
 
   void cancel() {
     _cancel = true;
+    dev.log("Cancelled isolate: ${_isolateList.length}",
+        name: "TileCrawler:cancelled", level: 1800);
+    for (var element in _isolateList) {
+      element?.kill(priority: Isolate.immediate);
+    }
+    _isolateList.clear();
     _queue.clear();
+  }
+
+  /// Returns the optimal thread count for the current platform.
+  int getOptimumThreadCount() {
+    final int availableProcessors = Platform.numberOfProcessors;
+    return (availableProcessors * 3).ceil();
   }
 
   Future<void> downloadWithIsolate(
@@ -56,7 +69,7 @@ class TileCrawler {
     var startCount = _queue.length;
     installedTileCount = startCount;
     _completedIsolateCount = 0;
-    int concurrent = 10;
+    int concurrent = getOptimumThreadCount();
     int remainingValue = startCount % concurrent;
     int divisorValue = (startCount - remainingValue) ~/ (concurrent - 1);
 
@@ -72,15 +85,20 @@ class TileCrawler {
     }
 
     for (var i = 0; i < concurrent; i++) {
+      if (_cancel) break;
+
       final receivePort = ReceivePort();
-      Isolate.spawn(_download, {
+      final isolate = await Isolate.spawn(_download, {
         'sendPort': receivePort.sendPort,
         'xyzList': parsedList[i],
         'client': options.client,
       });
+
+      _isolateList.add(isolate);
       receivePort.listen((message) {
         if (message is DownloadStatus) {
           if (message.status == DownloadStatusEnum.completed) {
+            isolate.kill();
             _completedIsolateCount++;
             dev.log("$_completedIsolateCount",
                 name: "TileCrawler:completed", level: 2000);

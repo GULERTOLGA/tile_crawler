@@ -35,10 +35,11 @@ class DownloadOptions with TileCrawlerHelper {
   double get area {
     var _area = _calculateArea(topLeft.latitude, topLeft.longitude,
         bottomRight.latitude, bottomRight.longitude);
-    return _area/ 1000000;
+    return _area / 1000000;
   }
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
     double R = 6371e3; // Dünya'nın ortalama yarıçapı (metre cinsinden)
     double phi1 = pi / 180 * lat1;
     double phi2 = pi / 180 * lat2;
