@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
         minZoomLevel: 10,
         downloadFolder: dir.path,
         client: HttpClient(),
-        maxZoomLevel: 16));
+        maxZoomLevel: 15));
 
     crawler.download(onStart: (totalTileCount, area) {
       setState(() {
@@ -97,6 +97,10 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             Text(
               'Total $_tileCount,(z:$_z,x:$_x, y:$_y)  ',
+            ),
+            Text(
+              '$_tileDownloaded',
+              style: Theme.of(context).textTheme.headline4,
             ),
             Text(
               '$_tileDownloaded',
