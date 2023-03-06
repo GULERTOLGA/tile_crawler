@@ -33,7 +33,7 @@ class TileCrawler {
   static int _completedIsolateCount = 0;
   static int installedTileCount = 0;
   TileCrawler(this.options);
-  final List<Isolate?> _isolateList = [];
+  static final List<ReceivePort?> _isolateList = [];
   bool _cancel = false;
 
   Future<void> download(
@@ -52,16 +52,24 @@ class TileCrawler {
     dev.log("Cancelled isolate: ${_isolateList.length}",
         name: "TileCrawler:cancelled", level: 1800);
     for (var element in _isolateList) {
-      element?.kill(priority: Isolate.immediate);
+      
+      element?.close();
     }
     _isolateList.clear();
     _queue.clear();
   }
 
   /// Returns the optimal thread count for the current platform.
-  int getOptimumThreadCount() {
+  /// Returns the optimal thread count for the current platform.
+  int getOptimumThreadCount(int tileCount) {
     final int availableProcessors = Platform.numberOfProcessors;
-    return (availableProcessors * 3).ceil();
+    if (tileCount < (availableProcessors * availableProcessors)) {
+      return (availableProcessors / 2).ceil();
+    } else {
+      var threadCount = (tileCount / availableProcessors).ceil();
+      var maxThreadCount = availableProcessors * 3;
+      return threadCount < maxThreadCount ? threadCount : maxThreadCount;
+    }
   }
 
   Future<void> downloadWithIsolate(
@@ -69,7 +77,7 @@ class TileCrawler {
     var startCount = _queue.length;
     installedTileCount = startCount;
     _completedIsolateCount = 0;
-    int concurrent = getOptimumThreadCount();
+    int concurrent = getOptimumThreadCount(startCount);
     int remainingValue = startCount % concurrent;
     int divisorValue = (startCount - remainingValue) ~/ (concurrent - 1);
 
@@ -88,20 +96,21 @@ class TileCrawler {
       if (_cancel) break;
 
       final receivePort = ReceivePort();
-      final isolate = await Isolate.spawn(_download, {
+      Isolate.spawn(_download, {
         'sendPort': receivePort.sendPort,
         'xyzList': parsedList[i],
         'client': options.client,
       });
-
-      _isolateList.add(isolate);
+      _isolateList.add(receivePort);
       receivePort.listen((message) {
         if (message is DownloadStatus) {
           if (message.status == DownloadStatusEnum.completed) {
-            isolate.kill();
             _completedIsolateCount++;
-            dev.log("$_completedIsolateCount",
-                name: "TileCrawler:completed", level: 2000);
+            Future.microtask(() {
+              dev.log("$_completedIsolateCount",
+                  name: "TileCrawler:completed", level: 2000);
+              receivePort.close();
+            });
             if (_completedIsolateCount == concurrent) {
               if (onEnd != null) {
                 onEnd.call();
@@ -113,14 +122,16 @@ class TileCrawler {
             }
           } else if (message.status == DownloadStatusEnum.downloading) {
             if (onProcess != null) {
-              dev.log(message.xyz.toString(),
-                  name: "TileCrawler:downloaded", level: 500);
-              onProcess.call(
-                _queue.length - --installedTileCount,
-                message.xyz!.z,
-                message.xyz!.x,
-                message.xyz!.y,
-              );
+              Future.microtask(() {
+                dev.log(message.xyz.toString(),
+                    name: "TileCrawler:downloaded", level: 500);
+                onProcess.call(
+                  _queue.length - --installedTileCount,
+                  message.xyz!.z,
+                  message.xyz!.x,
+                  message.xyz!.y,
+                );
+              });
             }
           }
         }
