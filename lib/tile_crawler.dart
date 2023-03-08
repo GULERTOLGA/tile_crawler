@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:flutter/widgets.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tile_crawler/model/crawler_summary.dart';
 import 'package:tile_crawler/tile_crawler_helper.dart';
@@ -40,7 +41,7 @@ class TileCrawler {
       {OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd}) async {
     _queue.clear();
     _cancel = false;
-    _queue.addAll(options.queue);
+    _queue.addAll(await options.queue);
     if (onStart != null) {
       onStart(_queue.length, options.area);
     }
@@ -52,7 +53,6 @@ class TileCrawler {
     dev.log("Cancelled isolate: ${_isolateList.length}",
         name: "TileCrawler:cancelled", level: 1800);
     for (var element in _isolateList) {
-      
       element?.close();
     }
     _isolateList.clear();

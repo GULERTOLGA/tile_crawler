@@ -26,11 +26,7 @@ class DownloadOptions with TileCrawlerHelper {
         assert(minZoomLevel != 0),
         assert(maxZoomLevel != 0),
         assert(minZoomLevel <= maxZoomLevel),
-        client = client ?? HttpClient() {
-    for (int z = minZoomLevel; z <= maxZoomLevel; z++) {
-      _queue.addAll(calculateRectIN(calculateRect(topLeft, bottomRight, z)));
-    }
-  }
+        client = client ?? HttpClient();
 
   double get area {
     var _area = _calculateArea(topLeft.latitude, topLeft.longitude,
@@ -58,9 +54,19 @@ class DownloadOptions with TileCrawlerHelper {
     return width * height;
   }
 
-  List<XYZ> get queue => _queue;
+  Future<List<XYZ>> get queue async {
+    await Future.microtask(() {
+      for (int z = minZoomLevel; z <= maxZoomLevel; z++) {
+        _queue.addAll(calculateRectIN(calculateRect(topLeft, bottomRight, z)));
+      }
+    });
+    return _queue;
+  }
 
-  TileCrawlerSummary get summary => TileCrawlerSummary(area, queue.length);
+  Future<TileCrawlerSummary> get summary async {
+    var _tempQueue = await queue;
+    return TileCrawlerSummary(area, _tempQueue.length);
+  }
 
   /*  String getTileUrl(XYZ xyz) {
     return tileUrlFormat
