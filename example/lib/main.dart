@@ -38,6 +38,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _tileCount = 0;
+  int _tileDownloadedWithErrors = 0;
   int _tileDownloaded = 0;
   int _x = 0;
   int _y = 0;
@@ -60,31 +61,40 @@ class _MyHomePageState extends State<MyHomePage> {
         tileUrlFormat: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
         topLeft: LatLng(39.898931, 32.701024),
         bottomRight: LatLng(39.845293, 32.803630),
-        minZoomLevel: 13,
+        minZoomLevel: 17,
         downloadFolder: dir.path,
         client: HttpClient(),
         maxZoomLevel: 18));
     _crawler = crawler;
-    crawler.download(onStart: (totalTileCount, area) {
-      setState(() {
-        _tileCount = totalTileCount;
-      });
-    }, onProcess: (tileDownloaded, z, x, y) {
-      // log("tileDownloaded: $tileDownloaded, z: $z, x: $x, y: $y");
-      setState(() {
-        _tileDownloaded = tileDownloaded;
-        _x = x;
-        _y = y;
-        _z = z;
-      });
-    }, onEnd: () {
-      log("end");
-      endTimeMillis = DateTime.now().millisecondsSinceEpoch;
-      var currentMillisecondsSinceEpoch =
-          DateTime.now().millisecondsSinceEpoch - startTimeMillis;
+    crawler.download(
+      onStart: (totalTileCount, area) {
+        setState(() {
+          _tileCount = totalTileCount;
+        });
+      },
+      onProcess: (tileDownloaded, xyz) {
+        // log("tileDownloaded: $tileDownloaded, z: $z, x: $x, y: $y");
+        setState(() {
+          _tileDownloaded = tileDownloaded;
+          _x = xyz.x;
+          _y = xyz.y;
+          _z = xyz.z;
+        });
+      },
+      onEnd: () {
+        log("end");
+        endTimeMillis = DateTime.now().millisecondsSinceEpoch;
+        var currentMillisecondsSinceEpoch =
+            DateTime.now().millisecondsSinceEpoch - startTimeMillis;
 
-      log("time: $currentMillisecondsSinceEpoch");
-    });
+        log("time: $currentMillisecondsSinceEpoch");
+      },
+      onProcessError: (xyz, error, stackTrace) {
+        setState(() {
+          _tileDownloadedWithErrors++;
+        });
+      },
+    );
   }
 
   @override
@@ -101,11 +111,11 @@ class _MyHomePageState extends State<MyHomePage> {
               'Total $_tileCount,(z:$_z,x:$_x, y:$_y)  ',
             ),
             Text(
-              '$_tileDownloaded',
+              'Başarılı indirilen tile sayısı\n$_tileDownloaded',
               style: Theme.of(context).textTheme.headline4,
             ),
             Text(
-              '$_tileDownloaded',
+              'Hatalı indirilen tile sayısı\n $_tileDownloadedWithErrors',
               style: Theme.of(context).textTheme.headline4,
             ),
           ],

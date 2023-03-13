@@ -22,7 +22,9 @@ part 'model/map_providers.dart';
 
 typedef OnStart = void Function(int totalTileCount, double area);
 
-typedef OnProcess = void Function(int tileDownloaded, int z, int x, int y);
+typedef OnProcess = void Function(int tileDownloaded, XYZ xyz);
+typedef OnProcessError = void Function(
+    XYZ xyz, Object error, StackTrace stackTrace);
 typedef OnEnd = void Function();
 typedef OnComplete = void Function(bool success, XYZ xyz);
 
@@ -38,14 +40,17 @@ class TileCrawler {
   bool _cancel = false;
 
   Future<void> download(
-      {OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd}) async {
+      {OnStart? onStart,
+      OnProcess? onProcess,
+      OnEnd? onEnd,
+      OnProcessError? onProcessError}) async {
     _queue.clear();
     _cancel = false;
     _queue.addAll(await options.queue);
     if (onStart != null) {
       onStart(_queue.length, options.area);
     }
-    downloadWithIsolate(onStart, onProcess, onEnd);
+    downloadWithIsolate(onStart, onProcess, onEnd, onProcessError);
   }
 
   void cancel() {
@@ -72,8 +77,8 @@ class TileCrawler {
     }
   }
 
-  Future<void> downloadWithIsolate(
-      OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd) async {
+  Future<void> downloadWithIsolate(OnStart? onStart, OnProcess? onProcess,
+      OnEnd? onEnd, OnProcessError? onProcessError) async {
     var startCount = _queue.length;
     installedTileCount = startCount;
     _completedIsolateCount = 0;
@@ -108,7 +113,7 @@ class TileCrawler {
             _completedIsolateCount++;
             Future.microtask(() {
               dev.log("$_completedIsolateCount",
-                  name: "TileCrawler:completed", level: 2000);
+                  name: "TileCrawler:completed", level: 1700);
               receivePort.close();
             });
             if (_completedIsolateCount == concurrent) {
@@ -117,8 +122,19 @@ class TileCrawler {
               }
             }
           } else if (message.status == DownloadStatusEnum.error) {
-            if (onEnd != null) {
-              onEnd.call();
+            if (onProcess != null) {
+              dev.log(message.error.toString(),
+                  name: "TileCrawler:error",
+                  level: 2000,
+                  error: message.error.toString() + message.xyz.toString());
+              onProcess.call(
+                _queue.length - --installedTileCount,
+                message.xyz!,
+              );
+            }
+            if (onProcessError != null) {
+              onProcessError.call(
+                  message.xyz!, message.error!, message.stackTrace!);
             }
           } else if (message.status == DownloadStatusEnum.downloading) {
             if (onProcess != null) {
@@ -127,9 +143,7 @@ class TileCrawler {
                     name: "TileCrawler:downloaded", level: 500);
                 onProcess.call(
                   _queue.length - --installedTileCount,
-                  message.xyz!.z,
-                  message.xyz!.x,
-                  message.xyz!.y,
+                  message.xyz!,
                 );
               });
             }
@@ -143,9 +157,10 @@ class TileCrawler {
     final xyzList = message['xyzList'] as List<XYZ>;
     final sendPort = message['sendPort'] as SendPort;
     final client = message['client'] as HttpClient;
-    try {
-      while (!_cancel && xyzList.isNotEmpty) {
-        var current = xyzList.removeLast();
+
+    while (!_cancel && xyzList.isNotEmpty) {
+      var current = xyzList.removeLast();
+      try {
         var url = options.tileUrlFormat.toLowerCase();
         if (url.contains("{quadkey}")) {
           url = url.replaceAll("{quadkey}", current.toQuadKey());
@@ -155,7 +170,7 @@ class TileCrawler {
               .replaceAll("{y}", current.y.toString())
               .replaceAll("{z}", current.z.toString());
         }
-
+        //client.connectionTimeout = const Duration(seconds: 2);
         final request = await client.getUrl(Uri.parse(url));
         final response = await request.close();
         final String pathString =
@@ -164,11 +179,10 @@ class TileCrawler {
         await response
             .pipe(File('${dirPath.path}/${current.y}.png').openWrite());
         sendPort.send(DownloadStatus.downloading(current));
+      } catch (e, s) {
+        sendPort.send(DownloadStatus.error(e, s, current));
       }
-      sendPort.send(DownloadStatus.completed());
-    } catch (e) {
-      dev.log(e.toString(), name: "TileCrawler:error", level: 1000, error: e);
-      sendPort.send(DownloadStatus.error(e.toString()));
     }
+    sendPort.send(DownloadStatus.completed());
   }
 }
