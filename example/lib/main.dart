@@ -58,7 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
             https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}
             ['0', '1', '2', '3']
       */
-        tileUrlFormat: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        tileUrlFormat: "http://ssltest.netcad.com.tr/netgisnew/map/alanya5/{x}/{y}/{z}.png",
         topLeft: LatLng(39.898931, 32.701024),
         bottomRight: LatLng(39.845293, 32.803630),
         minZoomLevel: 17,
