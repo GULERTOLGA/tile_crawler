@@ -20,4 +20,8 @@ class DownloadStatus {
           stackTrace: stackTrace);
   factory DownloadStatus.downloading(XYZ xyz) =>
       DownloadStatus(status: DownloadStatusEnum.downloading, xyz: xyz);
+  @override
+  String toString() {
+    return "DownloadStatus: $status, xyz: $xyz, error: $error, stackTrace: $stackTrace";
+  }
 }

@@ -1,24 +1,26 @@
 part of tile_crawler;
 
+typedef GenerateWmsUrl = String Function(XYZ xyz);
+
 class DownloadOptions with TileCrawlerHelper {
   final LatLng topLeft;
   final LatLng bottomRight;
   final int minZoomLevel;
   final int maxZoomLevel;
-  final String tileUrlFormat;
   String downloadFolder;
   final HttpClient client;
   List<XYZ> _queue = [];
+  final List<TileUrlProvider> tileProviders;
 
   DownloadOptions(
       {required this.topLeft,
       required this.bottomRight,
       required this.minZoomLevel,
       required this.maxZoomLevel,
-      required this.tileUrlFormat,
+      required this.tileProviders,
       HttpClient? client,
       this.downloadFolder = ''})
-      : assert(tileUrlFormat.isNotEmpty),
+      : assert(tileProviders.isNotEmpty),
         assert(topLeft.latitude != 0),
         assert(topLeft.longitude != 0),
         assert(bottomRight.latitude != 0),
@@ -30,7 +32,7 @@ class DownloadOptions with TileCrawlerHelper {
   DownloadOptions.tiles(
     List<XYZ> tiles,
     this.downloadFolder,
-    this.tileUrlFormat, {
+    this.tileProviders, {
     HttpClient? client,
   })  : topLeft = LatLng(0, 0),
         bottomRight = LatLng(0, 0),
@@ -38,6 +40,7 @@ class DownloadOptions with TileCrawlerHelper {
         maxZoomLevel = 0,
         _queue = tiles,
         client = client ?? HttpClient();
+
   double get area {
     var _area = _calculateArea(topLeft.latitude, topLeft.longitude,
         bottomRight.latitude, bottomRight.longitude);
@@ -78,11 +81,33 @@ class DownloadOptions with TileCrawlerHelper {
     var _tempQueue = await queue;
     return TileCrawlerSummary(area, _tempQueue.length);
   }
+}
 
-  /*  String getTileUrl(XYZ xyz) {
-    return tileUrlFormat
+abstract class TileUrlProvider {
+  final String providerKey;
+  String tileUrlFormat(XYZ xyz);
+  TileUrlProvider(this.providerKey);
+}
+
+class WmsTileUrlProvider extends TileUrlProvider {
+  WmsTileUrlProvider(this.generateWmsUrl, String providerKey)
+      : super(providerKey);
+  final GenerateWmsUrl generateWmsUrl;
+  @override
+  String tileUrlFormat(XYZ xyz) {
+    return generateWmsUrl.call(xyz);
+  }
+}
+
+class XYZTileUrlProvider extends TileUrlProvider {
+  XYZTileUrlProvider(this.tileUrl, String providerKey) : super(providerKey);
+  final String tileUrl;
+
+  @override
+  String tileUrlFormat(XYZ xyz) {
+    return tileUrl
         .replaceAll('{x}', xyz.x.toString())
         .replaceAll('{y}', xyz.y.toString())
         .replaceAll('{z}', xyz.z.toString());
-  } */
+  }
 }
