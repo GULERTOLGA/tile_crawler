@@ -1,196 +1,199 @@
 library tile_crawler;
 
 import 'dart:async';
+import 'dart:developer' as dev;
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 
+import 'package:latlong2/latlong.dart';
+import 'package:tile_crawler/model/crawler_summary.dart';
+import 'package:tile_crawler/tile_crawler_helper.dart';
+part 'model/xyz.dart';
+part 'model/download_options.dart';
+part 'model/rectangle.dart';
+
+part 'model/download_status.dart';
+part 'model/map_providers.dart';
 //https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}
 //https://a.tile.openstreetmap.org/{z}/{x}/{y}.png
 //https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90
 
 typedef OnStart = void Function(int totalTileCount, double area);
 
-typedef OnProcess = void Function(int tileDownloaded, int z, int x, int y);
+typedef OnProcess = void Function(int tileDownloaded, XYZ xyz);
+typedef OnProcessError = void Function(
+    XYZ xyz, Object error, StackTrace stackTrace);
 typedef OnEnd = void Function();
+typedef OnComplete = void Function(bool success, XYZ xyz);
 
 class TileCrawler {
-  final int tileSize = 256;
+  int tileCount = 0;
+
   final DownloadOptions options;
-  final List<_XYZ> _queue = [];
-
+  static final List<XYZ> _queue = [];
+  static int _completedIsolateCount = 0;
+  static int allTileCount = 0;
+  static int installedTileCount = 0;
   TileCrawler(this.options);
-
+  static final List<ReceivePort?> _isolateList = [];
   bool _cancel = false;
 
   Future<void> download(
-      {OnStart? onStart, OnProcess? onProcess, OnEnd? onEnd}) async {
+      {OnStart? onStart,
+      OnProcess? onProcess,
+      OnEnd? onEnd,
+      OnProcessError? onProcessError}) async {
     _queue.clear();
     _cancel = false;
-    for (int z = options.minZoomLevel; z <= options.maxZoomLevel; z++) {
-      _calculateRectIN(_calculateRect(options.topLeft, options.bottomRight, z));
-    }
+    _queue.addAll(await options.queue);
+    allTileCount = _queue.length * options.tileProviders.length;
     if (onStart != null) {
-      onStart(_queue.length, 1500.0);
+      onStart(allTileCount, options.area);
     }
-    var startCount = _queue.length;
-    while (!_cancel && _queue.isNotEmpty) {
-      var xyz = _queue.removeLast();
-      await _downloadCurrent(xyz);
-      if (onProcess != null) {
-        onProcess(startCount - _queue.length, xyz.z, xyz.x, xyz.y);
-      }
-    }
+    _downloadWithIsolate(onStart, onProcess, onEnd, onProcessError);
   }
 
   void cancel() {
     _cancel = true;
+    dev.log("Cancelled isolate: ${_isolateList.length}",
+        name: "TileCrawler:cancelled", level: 1800);
+    for (var element in _isolateList) {
+      element?.close();
+    }
+    _isolateList.clear();
     _queue.clear();
   }
 
-  _Rectangle _calculateRect(LatLng topLeft, LatLng bottomRight, int level) {
-    _XYZ topLeftTile =
-        _calculateXYZ(topLeft.latitude, topLeft.longitude, level);
+  /// Returns the optimal thread count for the current platform.
 
-    _XYZ bottomRightTile =
-        _calculateXYZ(bottomRight.latitude, bottomRight.longitude, level);
-
-    return _Rectangle(
-        startX: topLeftTile.x,
-        startY: topLeftTile.y,
-        endX: bottomRightTile.x,
-        endY: bottomRightTile.y,
-        level: level);
-  }
-
-  _XYZ _calculateXYZ(double latitude, double longitude, level) {
-    var sinLat = sin(latitude * pi / 180);
-    var pixelX = ((longitude + 180) / 360) * tileSize * pow(2, level);
-    var pixelY = (0.5 - log((1 + sinLat) / (1 - sinLat)) / (4 * pi)) *
-        tileSize *
-        pow(2, level);
-
-    return _XYZ(
-        x: (pixelX / tileSize).floor(),
-        y: (pixelY / tileSize).floor(),
-        z: level);
-  }
-
-  _calculateRectIN(_Rectangle rect) {
-    for (int x = rect.startX; x <= rect.endX; x++) {
-      for (int y = rect.startY; y <= rect.endY; y++) {
-        var xyz = _XYZ(x: x, y: y, z: rect.level);
-
-        _queue.add(xyz);
-      }
-    }
-  }
-
-  Future<void> _downloadCurrent(_XYZ current) async {
-    var url = options.tileUrlFormat.toLowerCase();
-    if (url.contains("{quadkey}")) {
-      url = url.replaceAll("{quadkey}", current.toQuadKey());
+  int getOptimumThreadCount(int tileCount) {
+    final int availableProcessors = Platform.numberOfProcessors;
+    if (tileCount < (availableProcessors * availableProcessors)) {
+      return (availableProcessors / 2).ceil();
     } else {
-      url = url
-          .replaceAll("{x}", current.x.toString())
-          .replaceAll("{y}", current.y.toString())
-          .replaceAll("{z}", current.z.toString());
+      var threadCount = (tileCount / availableProcessors).ceil();
+      var maxThreadCount = availableProcessors * 2;
+      return threadCount < maxThreadCount ? threadCount : maxThreadCount;
+    }
+  }
+
+  Future<void> _downloadWithIsolate(OnStart? onStart, OnProcess? onProcess,
+      OnEnd? onEnd, OnProcessError? onProcessError) async {
+    var startCount = _queue.length;
+    installedTileCount = allTileCount;
+    _completedIsolateCount = 0;
+    int concurrent = getOptimumThreadCount(startCount);
+    int remainingValue = startCount % concurrent;
+    int divisorValue = (startCount - remainingValue) ~/ (concurrent - 1);
+
+    List parsedList = [];
+
+    for (int i = 0; i < concurrent; i++) {
+      if (i == concurrent - 1) {
+        parsedList.add(_queue.sublist(i * divisorValue, startCount));
+      } else {
+        parsedList.add(
+            _queue.sublist(i * divisorValue, i * divisorValue + divisorValue));
+      }
     }
 
-    final request = await options.client.getUrl(Uri.parse(url));
-    final response = await request.close();
-    final String pathString =
-        "${options.downloadFolder}/${current.z}/${current.x}";
-    final dirPath = await Directory(pathString).create(recursive: true);
-    await response.pipe(File('${dirPath.path}/${current.y}.png').openWrite());
+    for (var i = 0; i < concurrent; i++) {
+      if (_cancel) break;
+
+      final receivePort = ReceivePort();
+      Isolate.spawn<IsolateDispatcher>(
+          _download,
+          IsolateDispatcher(
+              parsedList[i], receivePort.sendPort, options.client));
+      _isolateList.add(receivePort);
+      receivePort.listen((message) {
+        if (message is DownloadStatus) {
+          dev.log(message.toString());
+          if (message.status == DownloadStatusEnum.completed) {
+            _completedIsolateCount++;
+            Future.microtask(() {
+              dev.log("$_completedIsolateCount",
+                  name: "TileCrawler:completed", level: 1700);
+              receivePort.close();
+            });
+            if (_completedIsolateCount == concurrent) {
+              if (onEnd != null) {
+                onEnd.call();
+              }
+            }
+          } else if (message.status == DownloadStatusEnum.error) {
+            if (onProcess != null) {
+              dev.log(message.error.toString(),
+                  name: "TileCrawler:error",
+                  level: 2000,
+                  error: message.error.toString() + message.xyz.toString());
+              onProcess.call(
+                allTileCount - --installedTileCount,
+                message.xyz!,
+              );
+            }
+            if (onProcessError != null) {
+              onProcessError.call(
+                  message.xyz!, message.error!, message.stackTrace!);
+            }
+          } else if (message.status == DownloadStatusEnum.downloading) {
+            if (onProcess != null) {
+              Future.microtask(() {
+                dev.log(message.xyz.toString(),
+                    name: "TileCrawler:downloaded", level: 500);
+                onProcess.call(
+                  allTileCount - --installedTileCount,
+                  message.xyz!,
+                );
+              });
+            }
+          }
+        }
+      });
+    }
+  }
+
+  void _download(IsolateDispatcher dispatcher) async {
+    final xyzList = dispatcher.xyzList;
+    final sendPort = dispatcher.sendPort;
+    final client = dispatcher.client;
+    while (!_cancel && xyzList.isNotEmpty) {
+      var current = xyzList.removeLast();
+      for (var tileProvider in options.tileProviders) {
+        try {
+          String url = tileProvider.tileUrlFormat(current).toLowerCase();
+          dev.log(tileProvider.providerKey,
+              name: "TileCrawler:key", level: 1000);
+          if (url.contains("{quadkey}")) {
+            url = url.replaceAll("{quadkey}", current.toQuadKey());
+          } else {
+            url = url
+                .replaceAll("{x}", current.x.toString())
+                .replaceAll("{y}", current.y.toString())
+                .replaceAll("{z}", current.z.toString());
+          }
+
+          final request = await client.getUrl(Uri.parse(url));
+          final response = await request.close();
+          final String pathString =
+              "${options.downloadFolder}/${tileProvider.providerKey}/${current.z}/${current.x}";
+          final dirPath = await Directory(pathString).create(recursive: true);
+          await response
+              .pipe(File('${dirPath.path}/${current.y}.png').openWrite());
+          sendPort.send(DownloadStatus.downloading(current));
+        } catch (e, s) {
+          sendPort.send(DownloadStatus.error(e, s, current));
+        }
+      }
+    }
+    sendPort.send(DownloadStatus.completed());
   }
 }
 
-class LatLng {
-  final double latitude;
-  final double longitude;
-  LatLng({required this.latitude, required this.longitude});
-}
-
-class DownloadOptions {
-  final LatLng topLeft;
-  final LatLng bottomRight;
-  final int minZoomLevel;
-  final int maxZoomLevel;
-  final String tileUrlFormat;
-  final String downloadFolder;
+class IsolateDispatcher {
+  final List<XYZ> xyzList;
+  final SendPort sendPort;
   final HttpClient client;
-
-  DownloadOptions(
-      {required this.topLeft,
-      required this.bottomRight,
-      required this.minZoomLevel,
-      required this.maxZoomLevel,
-      required this.tileUrlFormat,
-      HttpClient? client,
-      required this.downloadFolder})
-      : client = client ?? HttpClient();
-}
-
-class _Rectangle {
-  final int startX;
-  final int startY;
-  final int endX;
-  final int endY;
-  final int level;
-
-  _Rectangle(
-      {required this.startX,
-      required this.startY,
-      required this.endX,
-      required this.level,
-      required this.endY});
-
-  @override
-  String toString() {
-    return "$startX, $startY $endX, $endY $level";
-  }
-}
-
-class _XYZ {
-  final int x;
-  final int y;
-  final int z;
-
-  _XYZ({required this.x, required this.y, required this.z});
-
-  _XYZ copyWith({int? x, int? y, int? z}) =>
-      _XYZ(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z);
-
-  String toQuadKey() {
-    var quadKey = [];
-    for (var i = z; i > 0; i--) {
-      var digit = 0;
-      var mask = 1 << (i - 1);
-      if ((x & mask) != 0) {
-        digit++;
-      }
-      if ((y & mask) != 0) {
-        digit++;
-        digit++;
-      }
-      quadKey.add(digit);
-    }
-    return quadKey.join('');
-  }
-
-  @override
-  String toString() {
-    return "$z/$x/$y";
-  }
-}
-
-class MapProviders {
-  static const String googleStreets =
-      "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}";
-
-  static const String openStreetMap =
-      "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
-
-  static const String bingSattellite =
-      "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90";
+  IsolateDispatcher(this.xyzList, this.sendPort, this.client);
 }
