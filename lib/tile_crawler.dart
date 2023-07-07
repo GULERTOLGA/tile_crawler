@@ -73,7 +73,7 @@ class TileCrawler {
       return (availableProcessors / 2).ceil();
     } else {
       var threadCount = (tileCount / availableProcessors).ceil();
-      var maxThreadCount = availableProcessors * 3;
+      var maxThreadCount = availableProcessors * 2;
       return threadCount < maxThreadCount ? threadCount : maxThreadCount;
     }
   }
