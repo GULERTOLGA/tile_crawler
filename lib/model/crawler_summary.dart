@@ -1,10 +1,13 @@
-class TileCrawlerSummary {
+class CrawlerSummary {
   final double area;
   final int tileCount;
-  TileCrawlerSummary(this.area, this.tileCount);
+
+  const CrawlerSummary({
+    required this.area,
+    required this.tileCount,
+  });
 
   @override
-  String toString() {
-    return "Area: $area, Tile Count: $tileCount";
-  }
+  String toString() =>
+      'CrawlerSummary(area: ${area.toStringAsFixed(2)} km², tiles: $tileCount)';
 }

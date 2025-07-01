@@ -1,21 +1,45 @@
-part of tile_crawler;
+import 'dart:math';
 
 class XYZ {
   final int x;
   final int y;
   final int z;
 
-  XYZ({required this.x, required this.y, required this.z});
-  static calculateXYZ(double latitude, double longitude, level, int tileSize) {
+  const XYZ({required this.x, required this.y, required this.z});
+
+  /// Calculate XYZ tile coordinates from latitude/longitude
+  static XYZ fromLatLng(double latitude, double longitude, int level,
+      [int tileSize = 256]) {
     var sinLat = sin(latitude * pi / 180);
     var pixelX = ((longitude + 180) / 360) * tileSize * pow(2, level);
     var pixelY = (0.5 - log((1 + sinLat) / (1 - sinLat)) / (4 * pi)) *
         tileSize *
         pow(2, level);
+
     return XYZ(
         x: (pixelX / tileSize).floor(),
         y: (pixelY / tileSize).floor(),
         z: level);
+  }
+
+  /// Generate list of XYZ tiles for a given bounding box
+  static List<XYZ> tilesInBounds({
+    required double topLeftLat,
+    required double topLeftLng,
+    required double bottomRightLat,
+    required double bottomRightLng,
+    required int level,
+  }) {
+    final topLeft = XYZ.fromLatLng(topLeftLat, topLeftLng, level);
+    final bottomRight = XYZ.fromLatLng(bottomRightLat, bottomRightLng, level);
+
+    final tiles = <XYZ>[];
+    for (int x = topLeft.x; x <= bottomRight.x; x++) {
+      for (int y = topLeft.y; y <= bottomRight.y; y++) {
+        tiles.add(XYZ(x: x, y: y, z: level));
+      }
+    }
+    return tiles;
   }
 
   XYZ copyWith({int? x, int? y, int? z}) =>
@@ -39,7 +63,17 @@ class XYZ {
   }
 
   @override
-  String toString() {
-    return "$z/$x/$y";
-  }
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is XYZ &&
+          runtimeType == other.runtimeType &&
+          x == other.x &&
+          y == other.y &&
+          z == other.z;
+
+  @override
+  int get hashCode => x.hashCode ^ y.hashCode ^ z.hashCode;
+
+  @override
+  String toString() => "$z/$x/$y";
 }

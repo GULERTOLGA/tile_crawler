@@ -1,20 +1,19 @@
 name: tile_crawler
-description: A Flutter package that downloads map tiles for offline using.
-version: 0.0.2
+description: A clean and efficient Flutter package for downloading map tiles offline with improved performance and maintainability.
+version: 1.0.0
 homepage: https://github.com/GULERTOLGA/tile_crawler
 repository: https://github.com/GULERTOLGA/tile_crawler
 
 environment:
-  sdk: ">=2.16.2 <3.0.0"
+  sdk: ">=2.16.2 <4.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  latlong2: ^0.8.1
 
 dev_dependencies:
-  flutter_lints: ^1.0.0
+  flutter_lints: ^2.0.0
   flutter_test:
     sdk: flutter
 
