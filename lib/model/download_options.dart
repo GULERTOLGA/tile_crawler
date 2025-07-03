@@ -56,18 +56,16 @@ class DownloadOptions {
   Future<List<XYZ>> get queue async {
     if (_cachedQueue != null) return _cachedQueue!;
 
-    final tiles = <XYZ>[];
-    await Future.microtask(() {
-      for (int z = minZoomLevel; z <= maxZoomLevel; z++) {
-        tiles.addAll(XYZ.tilesInBounds(
-          topLeftLat: topLeftLatLng[0],
-          topLeftLng: topLeftLatLng[1],
-          bottomRightLat: bottomRightLatLng[0],
-          bottomRightLng: bottomRightLatLng[1],
-          level: z,
-        ));
-      }
-    });
+    var tiles = <XYZ>[];
+    for (int z = minZoomLevel; z <= maxZoomLevel; z++) {
+      tiles.addAll(XYZ.tilesInBounds(
+        topLeftLat: topLeftLatLng[0],
+        topLeftLng: topLeftLatLng[1],
+        bottomRightLat: bottomRightLatLng[0],
+        bottomRightLng: bottomRightLatLng[1],
+        level: z,
+      ));
+    }
 
     _cachedQueue = tiles;
     return tiles;

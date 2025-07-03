@@ -118,12 +118,12 @@ class _MyHomePageState extends State<MyHomePage> {
     final scenario = _testScenarios[_selectedScenario];
 
     final options = DownloadOptions(
-      tileUrlFormat: MapProviders.openStreetMap,
+      tileUrlFormat: MapProviders.googleHybrid,
       topLeftLatLng: [39.898931, 32.701024], // Ankara coordinates
       bottomRightLatLng: [39.845293, 32.803630],
       minZoomLevel: scenario.minZoom,
       maxZoomLevel: scenario.maxZoom,
-      downloadFolder: '${dir.path}/tiles_optimized',
+      downloadFolder: '${dir.path}/tiles.',
     );
 
     _crawler = TileCrawler(options);

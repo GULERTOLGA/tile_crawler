@@ -33,9 +33,15 @@ class XYZ {
     final topLeft = XYZ.fromLatLng(topLeftLat, topLeftLng, level);
     final bottomRight = XYZ.fromLatLng(bottomRightLat, bottomRightLng, level);
 
+    // Ensure we have correct min/max bounds regardless of input order
+    final minX = topLeft.x < bottomRight.x ? topLeft.x : bottomRight.x;
+    final maxX = topLeft.x > bottomRight.x ? topLeft.x : bottomRight.x;
+    final minY = topLeft.y < bottomRight.y ? topLeft.y : bottomRight.y;
+    final maxY = topLeft.y > bottomRight.y ? topLeft.y : bottomRight.y;
+
     final tiles = <XYZ>[];
-    for (int x = topLeft.x; x <= bottomRight.x; x++) {
-      for (int y = topLeft.y; y <= bottomRight.y; y++) {
+    for (int x = minX; x <= maxX; x++) {
+      for (int y = minY; y <= maxY; y++) {
         tiles.add(XYZ(x: x, y: y, z: level));
       }
     }
