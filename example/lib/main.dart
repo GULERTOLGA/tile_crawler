@@ -40,20 +40,44 @@ class _MyHomePageState extends State<MyHomePage> {
   int _y = 0;
   int _z = 0;
 
+  int minZoomLevel = 14;
+  int maxZoomLevel = 18;
+  String tileUrlFormat = "http://127.0.0.1:5001/vectors/geoyol/{z}/{x}/{y}.mvt";
+
+  final TextEditingController _minZoomLevelController = TextEditingController();
+  final TextEditingController _maxZoomLevelController = TextEditingController();
+  final TextEditingController _tileUrlFormatController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Set the initial value
+    _minZoomLevelController.text = '14';
+    _maxZoomLevelController.text = '18';
+    _tileUrlFormatController.text = 'http://127.0.0.1:5001/vectors/geoyol/{z}/{x}/{y}.mvt';
+  }
+
   void _incrementCounter() async {
     var dir = await getApplicationDocumentsDirectory();
-//39.898931, 32.701024
-//39.845293, 32.803630
+    //39.898931, 32.701024
+    //39.845293, 32.803630
+
+    //36.824855, 31.750683
+
+    //36.223266, 32.354829
+
+    // Create a TextEditingController
+
+    // In your build method
 
     TileCrawler crawler = TileCrawler(DownloadOptions(
-        tileUrlFormat:
-            "https://ecn.t1.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=90",
-        topLeft: LatLng(latitude: 39.898931, longitude: 32.701024),
-        bottomRight: LatLng(latitude: 39.845293, longitude: 32.803630),
-        minZoomLevel: 10,
+        tileUrlFormat: tileUrlFormat,
+        topLeft: LatLng(latitude: 36.824855, longitude: 31.750683),
+        bottomRight: LatLng(latitude: 36.223266, longitude: 32.354829),
+        minZoomLevel: minZoomLevel,
         downloadFolder: dir.path,
         client: HttpClient(),
-        maxZoomLevel: 19));
+        maxZoomLevel: maxZoomLevel));
 
     crawler.download(
         onStart: (totalTileCount, area) {
@@ -82,6 +106,39 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            TextField(
+              controller: _tileUrlFormatController,
+              decoration: InputDecoration(
+                hintText: 'Enter your tile url format',
+              ),
+              onChanged: (value) {
+                setState(() {
+                  tileUrlFormat = value;
+                });
+              },
+            ),
+            TextField(
+              controller:_minZoomLevelController,
+              decoration: InputDecoration(
+                hintText: 'Enter your min zoom level',
+              ),
+              onChanged: (value) {
+                setState(() {
+                  minZoomLevel = int.tryParse(value) ?? 14;
+                });
+              },
+            ),
+            TextField(
+              controller:_maxZoomLevelController,
+              decoration: InputDecoration(
+                hintText: 'Enter your max zoom level',
+              ),
+              onChanged: (value) {
+                setState(() {
+                  maxZoomLevel =  int.tryParse(value) ?? 18;
+                });
+              },
+            ),
             Text(
               'Total $_tileCount,(z:$_z,x:$_x, y:$_y)  ',
             ),
