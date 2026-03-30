@@ -14,11 +14,11 @@ void main() async {
 /// Example: Using XYZ tiles with the enhanced system
 Future<void> xyzTileExample() async {
   print('\n=== XYZ Tile Download Example ===');
-  
+
   // Create XYZ tile crawler using the enhanced system
   final crawler = EnhancedTileCrawler.xyz(
-    topLeftLatLng: [39.0, 28.0],      // Istanbul top-left
-    bottomRightLatLng: [40.0, 29.0],  // Istanbul bottom-right
+    topLeftLatLng: [39.0, 28.0], // Istanbul top-left
+    bottomRightLatLng: [40.0, 29.0], // Istanbul bottom-right
     minZoomLevel: 10,
     maxZoomLevel: 12,
     tileUrlFormat: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -34,7 +34,8 @@ Future<void> xyzTileExample() async {
   try {
     await crawler.download(
       onStart: (totalTiles, remainingTiles, area) {
-        print('Starting download: $totalTiles tiles, ${area.toStringAsFixed(2)} km²');
+        print(
+            'Starting download: $totalTiles tiles, ${area.toStringAsFixed(2)} km²');
       },
       onProcess: (downloaded, remaining, xyz) {
         if (downloaded % 100 == 0) {
@@ -42,7 +43,8 @@ Future<void> xyzTileExample() async {
         }
       },
       onEnd: (totalDownloaded, totalSkipped) {
-        print('Download completed: $totalDownloaded downloaded, $totalSkipped skipped');
+        print(
+            'Download completed: $totalDownloaded downloaded, $totalSkipped skipped');
       },
       onProcessError: (xyz, error, stackTrace) {
         print('Error downloading tile ${xyz.toString()}: $error');
@@ -59,11 +61,12 @@ Future<void> wmtsTileExample() async {
 
   // Create WMTS tile crawler
   final crawler = EnhancedTileCrawler.wmts(
-    topLeftLatLng: [39.0, 28.0],      // Istanbul top-left
-    bottomRightLatLng: [40.0, 29.0],  // Istanbul bottom-right
+    topLeftLatLng: [39.0, 28.0], // Istanbul top-left
+    bottomRightLatLng: [40.0, 29.0], // Istanbul bottom-right
     minZoomLevel: 10,
     maxZoomLevel: 12,
-    urlTemplate: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/WMTS/tile/1.0.0/World_Imagery/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg',
+    urlTemplate:
+        'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/WMTS/tile/1.0.0/World_Imagery/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg',
     layer: 'World_Imagery',
     style: 'default',
     tileMatrixSet: 'GoogleMapsCompatible',
@@ -109,6 +112,8 @@ Future<void> customWmtsExample() async {
     style: 'default',
     tileMatrixSet: 'Plan1000_7933',
     format: 'png',
+    projectionCode: KnownProjections.epsg7933Code,
+    projectionDef: KnownProjections.epsg7933Def,
     resolutions: const [
       15624.984375,
       7812.4921875,
@@ -137,8 +142,8 @@ Future<void> customWmtsExample() async {
 
   // Create enhanced options with custom provider
   final options = EnhancedDownloadOptions(
-    topLeftLatLng: [39.0, 28.0],      // Istanbul area
-    bottomRightLatLng: [39.1, 28.1],  // Small area for demo
+    topLeftLatLng: [39.0, 28.0], // Istanbul area
+    bottomRightLatLng: [39.1, 28.1], // Small area for demo
     minZoomLevel: 5,
     maxZoomLevel: 7,
     tileProvider: provider,
@@ -258,7 +263,7 @@ Future<void> backwardCompatibilityExample() async {
   );
 
   final crawler = TileCrawler(options);
-  
+
   try {
     await crawler.download(
       onStart: (total, remaining, area) {
@@ -287,7 +292,8 @@ Future<void> factoryPatternExample() async {
   );
 
   final wmtsProvider = TileProviderFactory.createWMTSProvider(
-    urlTemplate: 'https://example.com/wmts/{Layer}/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.{format}',
+    urlTemplate:
+        'https://example.com/wmts/{Layer}/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.{format}',
     layer: 'satellite',
     style: 'default',
     tileMatrixSet: 'WebMercatorQuad',
@@ -297,7 +303,7 @@ Future<void> factoryPatternExample() async {
   // Create enhanced options with specific provider
   final enhancedOptions = EnhancedDownloadOptions(
     topLeftLatLng: [39.0, 28.0],
-    bottomRightLatLng: [39.1, 28.1],  // Smaller area for demo
+    bottomRightLatLng: [39.1, 28.1], // Smaller area for demo
     minZoomLevel: 10,
     maxZoomLevel: 10,
     tileProvider: xyzProvider,
@@ -322,7 +328,7 @@ Future<void> factoryPatternExample() async {
 
   // Create crawler with factory-created options
   final crawler = EnhancedTileCrawler(enhancedOptions);
-  
+
   try {
     await crawler.download(
       onStart: (total, remaining, area) {
@@ -343,12 +349,12 @@ Future<void> wmtsKvpExample() async {
 
   // Create WMTS provider with KVP (Key-Value Pair) format
   final wmtsProvider = TileProviderFactory.createWMTSProvider(
-    urlTemplate: 'https://example.com/wmts',  // Base URL for KVP
+    urlTemplate: 'https://example.com/wmts', // Base URL for KVP
     layer: 'orthoimagery',
     style: 'normal',
     tileMatrixSet: 'PM',
     format: 'jpeg',
-    useRestful: false,  // Use KVP format instead of RESTful
+    useRestful: false, // Use KVP format instead of RESTful
     name: 'KVP WMTS Provider',
   );
 
@@ -386,7 +392,8 @@ Future<void> configurationExample() async {
 
   final wmtsConfig = {
     'type': 'wmts',
-    'urlTemplate': 'https://example.com/wmts/{Layer}/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.{format}',
+    'urlTemplate':
+        'https://example.com/wmts/{Layer}/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.{format}',
     'name': 'Example WMTS Service',
     'layer': 'satellite',
     'style': 'default',
@@ -454,4 +461,4 @@ void urlGenerationExample() {
     'png',
   );
   print('WMTS KVP URL: $wmtsKvpUrl');
-} 
+}

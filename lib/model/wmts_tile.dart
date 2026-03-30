@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'storage_layout.dart';
 import 'tile.dart';
 
 /// WMTS tile implementation for Web Map Tile Service
@@ -77,9 +78,9 @@ class WMTSTile extends CoordinateTile {
       'LAYER': layer,
       'STYLE': style,
       'TILEMATRIXSET': tileMatrixSet,
-      'TILEMATRIX': zoomLevel.toString(),
-      'TILEROW': y.toString(),
-      'TILECOL': x.toString(),
+      'TileMatrix': zoomLevel.toString(),
+      'TileRow': y.toString(),
+      'TileCol': x.toString(),
       'FORMAT': 'image/$format',
     };
 
@@ -90,6 +91,19 @@ class WMTSTile extends CoordinateTile {
     return baseUrl.endsWith('?')
         ? '$baseUrl$queryString'
         : '$baseUrl&$queryString';
+  }
+
+  @override
+  String storageRelativePath(StorageLayout layout) {
+    switch (layout) {
+      case StorageLayout.sourceRelativePath:
+        return filePath;
+      case StorageLayout.slippyMapXyz:
+        return '$zoomLevel/$x/$y.$format';
+      case StorageLayout.tmsGlobalMercatorY:
+        final yTms = (1 << zoomLevel) - 1 - y;
+        return '$zoomLevel/$x/$yTms.$format';
+    }
   }
 
   @override

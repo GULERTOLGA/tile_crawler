@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -30,7 +29,7 @@ class _XYZDownloadScreenState extends State<XYZDownloadScreen>
   double _areaKm2 = 0.0;
 
   // Crawler
-  EnhancedTileCrawler? _crawler;
+  OfflineTileArchive? _crawler;
   bool _isDownloading = false;
 
   // Performance tracking
@@ -125,7 +124,7 @@ class _XYZDownloadScreenState extends State<XYZDownloadScreen>
     var dir = await getApplicationDocumentsDirectory();
 
     try {
-      final crawler = EnhancedTileCrawler.xyz(
+      final crawler = OfflineTileArchive.xyz(
         topLeftLatLng: [
           double.parse(_topLatController.text),
           double.parse(_topLngController.text),

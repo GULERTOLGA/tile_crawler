@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-26
+
+### Added
+
+- **Offline storage model**: `StorageLayout` (`slippyMapXyz`, `tmsGlobalMercatorY`, `sourceRelativePath`) and documented on-disk layout for flutter_map (`root/z/x/y.ext`).
+- **Resolved download plan**: `ResolvedDownload` with `Uri` URL, relative path, content-type hint, and `XYZ` progress key; `Tile.resolveUrl` / `Tile.storageRelativePath`.
+- **TileUrlHelper** moved to `lib/util/tile_url_helper.dart` (still exported from the package).
+- **Security**: `TileDownloadSecurity` optional host allow-list; `safeTileFilePath` guards against `..` segments; SSRF awareness called out in docs.
+- **Content-type**: tile bytes saved with extension from `Content-Type` or magic bytes (not hard-coded `.png` only).
+- **Primary API**: `OfflineTileArchive` with `.xyz` / `.wmts` factories; uses `TileDownloadService.downloadResolved` with `EnhancedDownloadOptions.resolvedDownloads` so WMTS URLs come from each `WMTSTile.buildUrl`.
+- **HTTP**: `TileDownloadService` accepts optional injectable `HttpClient`; one client per download session (no static ref-count); isolates removed (semaphore + `Future.wait` only).
+
+### Changed
+
+- **SDK**: `>=3.0.0 <4.0.0`; dependency on `package:path`.
+- **WMTS defaults**: `EnhancedDownloadOptions.fromWMTS` defaults `StorageLayout` to `sourceRelativePath`; pass `storageLayout: StorageLayout.slippyMapXyz` for EPSG:3857 archives that should match XYZ-on-disk layout.
+
+### Deprecated
+
+- `EnhancedTileCrawler` → use `OfflineTileArchive`.
+- `TileCrawler` → prefer `OfflineTileArchive.xyz` or `DownloadOptions` + `TileDownloadService`.
+
+### Removed
+
+- `TileCrawler.wmts` — use `OfflineTileArchive.wmts`.
+- Isolate-based download workers and shared static `HttpClient` ref-counting.
+
+### Migration
+
+1. Replace `EnhancedTileCrawler` with `OfflineTileArchive` (constructors `.xyz` / `.wmts` mirror the old API).
+2. Remove `TileCrawler.wmts`; use `OfflineTileArchive.wmts(...)`.
+3. Import `TileUrlHelper` from `package:tile_crawler/tile_crawler.dart` (unchanged export path).
+4. For flutter_map offline tiles, set `storageLayout: StorageLayout.slippyMapXyz` and use URL template `{z}/{x}/{y}.png` (or your resolved extension) relative to `downloadFolder`.
+
 ## [2.0.0] - [2025-01-XX] 🚀
 
 ### ⚡ MAJOR PERFORMANCE REVOLUTION

@@ -1,3 +1,5 @@
+import 'storage_layout.dart';
+
 /// Base interface for all tile types
 /// This provides a common contract for different tile systems like XYZ, WMTS, etc.
 abstract class Tile {
@@ -12,6 +14,12 @@ abstract class Tile {
 
   /// Generate the URL for downloading this tile
   String buildUrl(String urlTemplate);
+
+  /// Resolved download URI for this tile and provider [urlTemplate].
+  Uri resolveUrl(String urlTemplate) => Uri.parse(buildUrl(urlTemplate));
+
+  /// Relative path under the download root for [layout] (no leading slash).
+  String storageRelativePath(StorageLayout layout);
 
   /// Create a serializable representation of the tile
   Map<String, dynamic> toMap();

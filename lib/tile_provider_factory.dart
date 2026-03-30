@@ -1,10 +1,15 @@
 import 'dart:math';
+
+import 'model/resolved_download.dart';
+import 'model/storage_layout.dart';
+import 'model/tile.dart';
 import 'model/xyz.dart' as xyz_model;
 import 'model/xyz_tile.dart';
 import 'model/wmts_tile.dart';
 import 'providers/tile_provider.dart';
 import 'providers/xyz_tile_provider.dart';
 import 'providers/wmts_tile_provider.dart';
+import 'tile_download_security.dart';
 
 /// Factory class for creating different tile providers
 /// Provides a unified interface while maintaining backward compatibility
@@ -65,6 +70,12 @@ class EnhancedDownloadOptions {
   final TileProvider tileProvider;
   final String downloadFolder;
 
+  /// Storage layout for all tiles from this job (WMTS often uses
+  /// [StorageLayout.sourceRelativePath] or Slippy for EPSG:3857).
+  final StorageLayout storageLayout;
+
+  final TileDownloadSecurity? security;
+
   List<dynamic>? _cachedQueue;
 
   EnhancedDownloadOptions({
@@ -74,6 +85,8 @@ class EnhancedDownloadOptions {
     required this.maxZoomLevel,
     required this.tileProvider,
     this.downloadFolder = '',
+    this.storageLayout = StorageLayout.slippyMapXyz,
+    this.security,
   })  : assert(tileProvider.isValid, 'Tile provider configuration is invalid'),
         assert(topLeftLatLng.length == 2,
             'Top left coordinates must have latitude and longitude'),
@@ -92,6 +105,8 @@ class EnhancedDownloadOptions {
     required this.maxZoomLevel,
     required String tileUrlFormat,
     this.downloadFolder = '',
+    this.storageLayout = StorageLayout.slippyMapXyz,
+    this.security,
   }) : tileProvider = TileProviderFactory.createXYZProvider(
           urlTemplate: tileUrlFormat,
         );
@@ -109,6 +124,8 @@ class EnhancedDownloadOptions {
     String format = 'png',
     bool useRestful = true,
     this.downloadFolder = '',
+    this.storageLayout = StorageLayout.sourceRelativePath,
+    this.security,
   }) : tileProvider = TileProviderFactory.createWMTSProvider(
           urlTemplate: urlTemplate,
           layer: layer,
@@ -169,6 +186,20 @@ class EnhancedDownloadOptions {
     return <xyz_model.XYZ>[];
   }
 
+  /// Resolved download rows using each tile’s [Tile.buildUrl] / [Tile.storageRelativePath].
+  Future<List<ResolvedDownload>> get resolvedDownloads async {
+    final tiles = await queue;
+    return tiles
+        .map(
+          (dynamic t) => ResolvedDownload.fromTile(
+            tile: t as Tile,
+            urlTemplate: tileProvider.urlTemplate,
+            storageLayout: storageLayout,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   double _calculateDistance(
       double lat1, double lon1, double lat2, double lon2) {
     const double R = 6371e3; // Earth's average radius in meters
@@ -188,77 +219,5 @@ class EnhancedDownloadOptions {
     final double width = _calculateDistance(lat1, lon1, lat1, lon2);
     final double height = _calculateDistance(lat1, lon1, lat2, lon1);
     return width * height;
-  }
-}
-
-/// Helper functions for tile URL generation
-class TileUrlHelper {
-  /// Generate XYZ tile URL
-  static String generateXYZUrl(String template, xyz_model.XYZ tile) {
-    var url = template;
-
-    if (url.contains('{quadkey}')) {
-      url = url.replaceAll('{quadkey}', tile.toQuadKey());
-    } else {
-      url = url
-          .replaceAll('{x}', tile.x.toString())
-          .replaceAll('{y}', tile.y.toString())
-          .replaceAll('{z}', tile.z.toString());
-    }
-
-    return url;
-  }
-
-  /// Generate WMTS tile URL (RESTful)
-  static String generateWMTSRestfulUrl(
-    String template,
-    String layer,
-    String style,
-    String tileMatrixSet,
-    int tileMatrix,
-    int tileRow,
-    int tileCol,
-    String format,
-  ) {
-    return template
-        .replaceAll('{Layer}', layer)
-        .replaceAll('{Style}', style)
-        .replaceAll('{TileMatrixSet}', tileMatrixSet)
-        .replaceAll('{TileMatrix}', tileMatrix.toString())
-        .replaceAll('{TileRow}', tileRow.toString())
-        .replaceAll('{TileCol}', tileCol.toString())
-        .replaceAll('{format}', format);
-  }
-
-  /// Generate WMTS tile URL (KVP)
-  static String generateWMTSKvpUrl(
-    String baseUrl,
-    String layer,
-    String style,
-    String tileMatrixSet,
-    int tileMatrix,
-    int tileRow,
-    int tileCol,
-    String format,
-  ) {
-    final url = baseUrl.contains('?') ? baseUrl : '$baseUrl?';
-    final params = <String, String>{
-      'SERVICE': 'WMTS',
-      'REQUEST': 'GetTile',
-      'VERSION': '1.0.0',
-      'LAYER': layer,
-      'STYLE': style,
-      'TILEMATRIXSET': tileMatrixSet,
-      'TILEMATRIX': tileMatrix.toString(),
-      'TILEROW': tileRow.toString(),
-      'TILECOL': tileCol.toString(),
-      'FORMAT': 'image/$format',
-    };
-
-    final queryString = params.entries
-        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-        .join('&');
-
-    return url.endsWith('?') ? '$url$queryString' : '$url&$queryString';
   }
 }

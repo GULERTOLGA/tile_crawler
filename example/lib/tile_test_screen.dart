@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tile_crawler/tile_crawler.dart';
@@ -32,7 +30,7 @@ class _TileTestScreenState extends State<TileTestScreen>
 
   // Crawlers
   TileCrawler? _legacyCrawler;
-  EnhancedTileCrawler? _enhancedCrawler;
+  OfflineTileArchive? _enhancedCrawler;
   bool _isDownloading = false;
 
   // Performance tracking
@@ -185,7 +183,7 @@ class _TileTestScreenState extends State<TileTestScreen>
   }
 
   Future<void> _startXYZDownload(String basePath, TestConfig config) async {
-    final crawler = EnhancedTileCrawler.xyz(
+    final crawler = OfflineTileArchive.xyz(
       topLeftLatLng: [39.898931, 32.701024], // Ankara coordinates
       bottomRightLatLng: [39.845293, 32.803630],
       minZoomLevel: 10,
@@ -202,7 +200,7 @@ class _TileTestScreenState extends State<TileTestScreen>
     String basePath,
     TestConfig config,
   ) async {
-    final crawler = EnhancedTileCrawler.wmts(
+    final crawler = OfflineTileArchive.wmts(
       topLeftLatLng: [39.898931, 32.701024],
       bottomRightLatLng: [39.845293, 32.803630],
       minZoomLevel: 10,
@@ -240,7 +238,7 @@ class _TileTestScreenState extends State<TileTestScreen>
       downloadFolder: '$basePath/wmts_kvp',
     );
 
-    final crawler = EnhancedTileCrawler(options);
+    final crawler = OfflineTileArchive(options);
     _enhancedCrawler = crawler;
     await _executeDownload(crawler, 'WMTS KVP');
   }
@@ -257,6 +255,8 @@ class _TileTestScreenState extends State<TileTestScreen>
       style: 'default',
       tileMatrixSet: 'Plan1000_7933',
       format: 'png',
+      projectionCode: KnownProjections.epsg7933Code,
+      projectionDef: KnownProjections.epsg7933Def,
       resolutions: const [
         15624.984375,
         7812.4921875,
@@ -268,14 +268,14 @@ class _TileTestScreenState extends State<TileTestScreen>
         122.0701904296875,
         61.03509521484375,
         30.517547607421875,
-        15.258773803710938,
-        7.629386901855469,
-        3.8146934509277344,
-        1.9073467254638672,
-        0.9536733627319336,
-        0.4768366813659668,
-        0.2384183406829834,
-        0.1192091703414917,
+        15.2587738037109375,
+        7.62938690185546875,
+        3.814693450927734375,
+        1.9073467254638671875,
+        0.95367336273193359375,
+        0.47683668136596875,
+        0.23841834068298359375,
+        0.119209170341491796875
       ],
       originX: -180,
       originY: 31999878,
@@ -292,7 +292,7 @@ class _TileTestScreenState extends State<TileTestScreen>
       downloadFolder: '$basePath/custom_wmts',
     );
 
-    final crawler = EnhancedTileCrawler(options);
+    final crawler = OfflineTileArchive(options);
     _enhancedCrawler = crawler;
     await _executeDownload(crawler, 'Custom WMTS');
   }
@@ -301,19 +301,33 @@ class _TileTestScreenState extends State<TileTestScreen>
     String basePath,
     TestConfig config,
   ) async {
-    // Use predefined NetGIS Plan1000 WMTS provider
-    final provider = CustomWMTSProviders.netgisPlan1000;
+    // CRS must match the WMTS tile matrix set (here TM3 / GRS80, EPSG:7933).
+    final provider = CustomWMTSTileProvider(
+      urlTemplate: config.urlTemplate,
+      layer: 'AlanyaPlanWMS',
+      style: 'default',
+      tileMatrixSet: 'AlanyaPlanWMS_7933',
+      format: 'png',
+      projectionCode: KnownProjections.epsg7933Code,
+      projectionDef: KnownProjections.epsg7933Def,
+      resolutions: CustomWMTSProviders.netgisPlan1000Resolutions,
+      originX: -180,
+      originY: 31999878,
+      tileSize: 256,
+      customParams: 'NCWS=ALANYA_BELNETMAP6',
+      name: 'NetGIS Plan1000',
+    );
 
     final options = EnhancedDownloadOptions(
-      topLeftLatLng: [39.898931, 32.701024], // Ankara area
-      bottomRightLatLng: [39.845293, 32.803630],
-      minZoomLevel: 10,
-      maxZoomLevel: 12,
+      topLeftLatLng: [36.55671691910899, 31.9852927882567], // Ankara area
+      bottomRightLatLng: [36.54236919973332, 32.00151888772663],
+      minZoomLevel: 13,
+      maxZoomLevel: 14,
       tileProvider: provider,
       downloadFolder: '$basePath/netgis_plan1000',
     );
 
-    final crawler = EnhancedTileCrawler(options);
+    final crawler = OfflineTileArchive(options);
     _enhancedCrawler = crawler;
     await _executeDownload(crawler, 'NetGIS Plan1000');
   }
@@ -334,9 +348,7 @@ class _TileTestScreenState extends State<TileTestScreen>
     final summary = await crawler.getSummary();
     setState(() {
       _areaKm2 = options.area;
-      _currentStrategy = summary.tileCount < 300
-          ? "Connection Pool"
-          : "Isolates";
+      _currentStrategy = 'Concurrent HTTP';
     });
 
     await crawler.download(
@@ -348,15 +360,13 @@ class _TileTestScreenState extends State<TileTestScreen>
   }
 
   Future<void> _executeDownload(
-    EnhancedTileCrawler crawler,
+    OfflineTileArchive crawler,
     String type,
   ) async {
     final summary = await crawler.getSummary();
     setState(() {
       _areaKm2 = summary.area;
-      _currentStrategy = summary.tileCount < 300
-          ? "Connection Pool"
-          : "Isolates";
+      _currentStrategy = 'Concurrent HTTP';
     });
 
     await crawler.download(
@@ -593,9 +603,9 @@ class _TileTestScreenState extends State<TileTestScreen>
                   child: Text(
                     config.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: config.color,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          color: config.color,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
               ],

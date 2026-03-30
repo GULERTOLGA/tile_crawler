@@ -1,7 +1,9 @@
-import 'dart:math';
-import 'tile_provider.dart';
+import 'package:proj4dart/proj4dart.dart';
+
 import '../model/tile.dart';
 import '../model/wmts_tile.dart';
+import '../util/tile_projection_registry.dart';
+import 'tile_provider.dart';
 
 /// Custom WMTS tile provider with support for custom coordinate systems,
 /// origins, resolutions, and authentication parameters
@@ -19,6 +21,13 @@ class CustomWMTSTileProvider extends TileProvider {
   final int tileSize;
   final String? customParams;
 
+  /// CRS code registered with proj4dart (e.g. `EPSG:7933`).
+  final String projectionCode;
+
+  /// PROJ.4 definition string for [projectionCode]; used for WGS84 → grid
+  /// conversion when computing tile indices.
+  final String projectionDef;
+
   CustomWMTSTileProvider({
     required String urlTemplate,
     required this.layer,
@@ -29,11 +38,18 @@ class CustomWMTSTileProvider extends TileProvider {
     required this.resolutions,
     required this.originX,
     required this.originY,
+    required this.projectionCode,
+    required this.projectionDef,
     this.tileSize = 256,
     this.customParams,
     String? name,
-  })  : _urlTemplate = urlTemplate,
+    TileProjectionRegistry? projectionRegistry,
+  })  : _projectionRegistry =
+            projectionRegistry ?? TileProjectionRegistry.instance,
+        _urlTemplate = urlTemplate,
         _name = name ?? 'Custom WMTS Provider';
+
+  final TileProjectionRegistry _projectionRegistry;
 
   @override
   String get urlTemplate => _urlTemplate;
@@ -49,6 +65,8 @@ class CustomWMTSTileProvider extends TileProvider {
         tileMatrixSet.isNotEmpty &&
         format.isNotEmpty &&
         resolutions.isNotEmpty &&
+        projectionCode.isNotEmpty &&
+        projectionDef.isNotEmpty &&
         originX != 0 &&
         originY != 0;
   }
@@ -63,9 +81,6 @@ class CustomWMTSTileProvider extends TileProvider {
     required int maxZoomLevel,
   }) async {
     final tiles = <Tile>[];
-
-    // Convert bbox to projected coordinates if needed
-    final bbox = [topLeftLng, bottomRightLat, bottomRightLng, topLeftLat];
 
     for (int zoom = minZoomLevel; zoom <= maxZoomLevel; zoom++) {
       final zoomTiles = await generateTilesForZoom(
@@ -96,7 +111,14 @@ class CustomWMTSTileProvider extends TileProvider {
       return tiles;
     }
 
-    final bbox = [topLeftLng, bottomRightLat, bottomRightLng, topLeftLat];
+    final topLeftProj = _toProjected(topLeftLng, topLeftLat);
+    final bottomRightProj = _toProjected(bottomRightLng, bottomRightLat);
+    final bbox = [
+      topLeftProj.x,
+      bottomRightProj.y,
+      bottomRightProj.x,
+      topLeftProj.y
+    ];
     final tileRange = _bboxToTileRange(bbox, zoomLevel);
     final minCol = tileRange[0];
     final maxCol = tileRange[1];
@@ -145,7 +167,19 @@ class CustomWMTSTileProvider extends TileProvider {
       'originY': originY,
       'tileSize': tileSize,
       'customParams': customParams,
+      'projectionCode': projectionCode,
+      'projectionDef': projectionDef,
     };
+  }
+
+  /// WGS84 (lng, lat) → projected coordinates in [projectionCode].
+  Point _toProjected(double lng, double lat) {
+    return _projectionRegistry.wgs84ToProjected(
+      projectionCode: projectionCode,
+      projectionDef: projectionDef,
+      longitude: lng,
+      latitude: lat,
+    );
   }
 
   /// Convert bounding box to tile range using custom origin and resolutions
@@ -236,7 +270,7 @@ class CustomWMTSTile extends WMTSTile {
   String get filePath => '$zoomLevel/$x/$y.$format';
 
   @override
-  String get id => 'custom_wmts_${zoomLevel}_${x}_${y}';
+  String get id => 'custom_wmts_${zoomLevel}_${x}_$y';
 
   @override
   Map<String, dynamic> toMap() {
@@ -271,6 +305,28 @@ class CustomWMTSTile extends WMTSTile {
 
 /// Predefined custom WMTS providers
 class CustomWMTSProviders {
+  /// Resolution ladder shared by NetGIS Plan1000 / Alanya sample configs.
+  static const List<double> netgisPlan1000Resolutions = [
+    15624.984375,
+    7812.4921875,
+    3906.24609375,
+    1953.123046875,
+    976.5615234375,
+    488.28076171875,
+    244.140380859375,
+    122.0701904296875,
+    61.03509521484375,
+    30.517547607421875,
+    15.2587738037109375,
+    7.62938690185546875,
+    3.814693450927734375,
+    1.9073467254638671875,
+    0.95367336273193359375,
+    0.47683668136596875,
+    0.23841834068298359375,
+    0.119209170341491796875,
+  ];
+
   /// Turkish Land Registry WMTS provider
   static CustomWMTSTileProvider get turkishLandRegistry =>
       CustomWMTSTileProvider(
@@ -279,6 +335,8 @@ class CustomWMTSProviders {
         style: 'default',
         tileMatrixSet: 'Plan1000_7933',
         format: 'png',
+        projectionCode: KnownProjections.epsg7933Code,
+        projectionDef: KnownProjections.epsg7933Def,
         resolutions: const [
           15624.984375,
           7812.4921875,
@@ -309,34 +367,17 @@ class CustomWMTSProviders {
   /// NetGIS Plan1000 WMTS provider - Real server test
   static CustomWMTSTileProvider get netgisPlan1000 => CustomWMTSTileProvider(
         urlTemplate: 'https://ssltest.netcad.com.tr/netgisnew/wmts.ashx',
-        layer: 'Plan1000',
+        layer: 'AlanyaPlanWMS',
         style: 'default',
-        tileMatrixSet: 'Plan1000_7933',
+        tileMatrixSet: 'AlanyaPlanWMS_7933',
         format: 'png',
-        resolutions: const [
-          15624.984375,
-          7812.4921875,
-          3906.24609375,
-          1953.123046875,
-          976.5615234375,
-          488.28076171875,
-          244.140380859375,
-          122.0701904296875,
-          61.03509521484375,
-          30.517547607421875,
-          15.258773803710938,
-          7.629386901855469,
-          3.8146934509277344,
-          1.9073467254638672,
-          0.9536733627319336,
-          0.4768366813659668,
-          0.2384183406829834,
-          0.1192091703414917,
-        ],
+        projectionCode: KnownProjections.epsg7933Code,
+        projectionDef: KnownProjections.epsg7933Def,
+        resolutions: netgisPlan1000Resolutions,
         originX: -180,
         originY: 31999878,
         tileSize: 256,
-        customParams: 'NCWS=WMTSTEST2',
+        customParams: 'NCWS=ALANYA_BELNETMAP6',
         name: 'NetGIS Plan1000',
       );
 
@@ -351,9 +392,12 @@ class CustomWMTSProviders {
     required List<double> resolutions,
     required double originX,
     required double originY,
+    required String projectionCode,
+    required String projectionDef,
     String? customParams,
     int tileSize = 256,
     String? name,
+    TileProjectionRegistry? projectionRegistry,
   }) {
     return CustomWMTSTileProvider(
       urlTemplate: baseUrl,
@@ -365,9 +409,12 @@ class CustomWMTSProviders {
       resolutions: resolutions,
       originX: originX,
       originY: originY,
+      projectionCode: projectionCode,
+      projectionDef: projectionDef,
       tileSize: tileSize,
       customParams: customParams,
       name: name ?? 'Custom WMTS with Auth',
+      projectionRegistry: projectionRegistry,
     );
   }
 }

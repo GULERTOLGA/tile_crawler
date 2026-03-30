@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'storage_layout.dart';
 import 'tile.dart';
 
 /// XYZ tile implementation for standard web map tiles
@@ -43,6 +44,19 @@ class XYZTile extends CoordinateTile {
     }
 
     return url;
+  }
+
+  @override
+  String storageRelativePath(StorageLayout layout) {
+    final ext = fileExtension;
+    switch (layout) {
+      case StorageLayout.slippyMapXyz:
+      case StorageLayout.sourceRelativePath:
+        return '$zoomLevel/$x/$y.$ext';
+      case StorageLayout.tmsGlobalMercatorY:
+        final yTms = (1 << zoomLevel) - 1 - y;
+        return '$zoomLevel/$x/$yTms.$ext';
+    }
   }
 
   @override
@@ -115,7 +129,7 @@ class XYZTile extends CoordinateTile {
 
   /// Convert tile coordinates to quadkey format
   String toQuadKey() {
-    var quadKey = [];
+    final quadKey = <int>[];
     for (var i = zoomLevel; i > 0; i--) {
       var digit = 0;
       var mask = 1 << (i - 1);

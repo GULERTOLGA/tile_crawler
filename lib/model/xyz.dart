@@ -1,5 +1,9 @@
 import 'dart:math';
 
+/// Web Mercator tile index (`x`, `y`, `z`) for queue math and progress callbacks.
+///
+/// For a [Tile] implementation of the same indices, use [XYZTile] in
+/// `xyz_tile.dart` (`import ... hide XYZ` if you also import this library).
 class XYZ {
   final int x;
   final int y;
@@ -52,7 +56,7 @@ class XYZ {
       XYZ(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z);
 
   String toQuadKey() {
-    var quadKey = [];
+    final quadKey = <int>[];
     for (var i = z; i > 0; i--) {
       var digit = 0;
       var mask = 1 << (i - 1);

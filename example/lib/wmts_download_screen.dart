@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tile_crawler/tile_crawler.dart';
@@ -30,7 +28,7 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
   double _areaKm2 = 0.0;
 
   // Crawler
-  EnhancedTileCrawler? _crawler;
+  OfflineTileArchive? _crawler;
   bool _isDownloading = false;
 
   // Performance tracking
@@ -41,12 +39,13 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
   late AnimationController _progressController;
 
   // Form controllers
-  final _topLatController = TextEditingController(text: '39.898931');
-  final _topLngController = TextEditingController(text: '32.701024');
-  final _bottomLatController = TextEditingController(text: '39.845293');
-  final _bottomLngController = TextEditingController(text: '32.803630');
-  final _minZoomController = TextEditingController(text: '10');
-  final _maxZoomController = TextEditingController(text: '11');
+  final _topLatController = TextEditingController(text: '36.55285449444367');
+  final _topLngController = TextEditingController(text: '31.9897278454153');
+  final _bottomLatController = TextEditingController(text: '36.54332068153187');
+  final _bottomLngController =
+      TextEditingController(text: '31.998578896372305');
+  final _minZoomController = TextEditingController(text: '6');
+  final _maxZoomController = TextEditingController(text: '10');
 
   // WMTS specific controllers
   final _urlController = TextEditingController(
@@ -87,19 +86,21 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     ),
     'NetGIS Plan1000': WMTSServiceConfig(
       name: 'NetGIS Plan1000',
-      url: 'https://ssltest.netcad.com.tr/netgisnew/wmts.ashx',
-      layer: 'Plan1000',
+      url:
+          'https://ssltest.netcad.com.tr/netgisnew/wmts.ashx?NCWS=ALANYA_BELNETMAP6',
+      layer: 'HALIHAZIRTUM_ITRF',
       style: 'default',
-      tileMatrixSet: 'Plan1000_7933',
+      tileMatrixSet: 'HALIHAZIRTUM_ITRF_7933',
       format: 'png',
       useRestful: false,
     ),
     'Custom WMTS': WMTSServiceConfig(
       name: 'Custom WMTS',
-      url: 'https://your-wmts-server.com/wmts',
-      layer: 'your_layer',
+      url:
+          'https://ssltest.netcad.com.tr/netgisnew/wmts.ashx?NCWS=ALANYA_BELNETMAP6',
+      layer: 'HALIHAZIRTUM_ITRF',
       style: 'default',
-      tileMatrixSet: 'EPSG:3857',
+      tileMatrixSet: 'HALIHAZIRTUM_ITRF_7933',
       format: 'png',
       useRestful: true,
     ),
@@ -186,11 +187,11 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     var dir = await getApplicationDocumentsDirectory();
 
     try {
-      late EnhancedTileCrawler crawler;
+      late OfflineTileArchive crawler;
 
       if (_useRestful) {
         // RESTful WMTS
-        crawler = EnhancedTileCrawler.wmts(
+        crawler = OfflineTileArchive.wmts(
           topLeftLatLng: [
             double.parse(_topLatController.text),
             double.parse(_topLngController.text),
@@ -235,7 +236,7 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
           downloadFolder: '${dir.path}/wmts_tiles',
         );
 
-        crawler = EnhancedTileCrawler(options);
+        crawler = OfflineTileArchive(options);
       }
 
       _crawler = crawler;

@@ -1,4 +1,6 @@
+import 'package:example/tile_test_screen.dart';
 import 'package:flutter/material.dart';
+import 'flutter_map_offline_screen.dart';
 import 'xyz_download_screen.dart';
 import 'wmts_download_screen.dart';
 
@@ -42,98 +44,141 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Header
-                Icon(Icons.map, size: 80, color: Colors.blue.shade600),
-                const SizedBox(height: 20),
-                Text(
-                  'Tile Crawler Demo',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade800,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Header
+                  Icon(Icons.map, size: 80, color: Colors.blue.shade600),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Tile Crawler Demo',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Harita karolarınızı indirmek için bir seçenek seçin',
-                  style: Theme.of(
+                  const SizedBox(height: 10),
+                  Text(
+                    'Harita karolarınızı indirmek için bir seçenek seçin',
+                    style: Theme.of(
+                      context,
+                    )
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(color: Colors.blue.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 40),
+
+                  _buildDownloadCard(
                     context,
-                  ).textTheme.bodyLarge?.copyWith(color: Colors.blue.shade600),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-
-                // XYZ Download Button
-                _buildDownloadCard(
-                  context,
-                  title: 'XYZ Tile İndirme',
-                  subtitle: 'OpenStreetMap, Google Maps vb.',
-                  description: 'Standart XYZ formatında harita karoları',
-                  icon: Icons.grid_on,
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const XYZDownloadScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // WMTS Download Button
-                _buildDownloadCard(
-                  context,
-                  title: 'WMTS Tile İndirme',
-                  subtitle: 'ArcGIS, NetGIS vb.',
-                  description: 'WMTS protokolü ile harita karoları',
-                  icon: Icons.satellite,
-                  color: Colors.orange,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WMTSDownloadScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 40),
-
-                // Info Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    title: 'flutter_map — çevrimdışı demo',
+                    subtitle: 'Haritada OSM, indir, yerel HTTP ile offline',
+                    description:
+                        'Görünür alanı indirip çevrimdışı katmana geçiş',
+                    icon: Icons.map_outlined,
+                    color: Colors.teal,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (context) => const FlutterMapOfflineScreen(),
+                        ),
+                      );
+                    },
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.blue.shade600,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Her iki seçenek de yüksek performanslı indirme ve otomatik önbellek yönetimi sunar.',
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontSize: 14,
+
+                  const SizedBox(height: 20),
+
+                  // XYZ Download Button
+                  _buildDownloadCard(
+                    context,
+                    title: 'XYZ Tile İndirme',
+                    subtitle: 'OpenStreetMap, Google Maps vb.',
+                    description: 'Standart XYZ formatında harita karoları',
+                    icon: Icons.grid_on,
+                    color: Colors.green,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const XYZDownloadScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // WMTS Download Button
+                  _buildDownloadCard(
+                    context,
+                    title: 'WMTS Tile İndirme',
+                    subtitle: 'ArcGIS, NetGIS vb.',
+                    description: 'WMTS protokolü ile harita karoları',
+                    icon: Icons.satellite,
+                    color: Colors.orange,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WMTSDownloadScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // WMTS Download Button
+                  _buildDownloadCard(
+                    context,
+                    title: 'Tile Test',
+                    subtitle: 'ArcGIS, NetGIS vb.',
+                    description: 'Tile test için',
+                    icon: Icons.satellite,
+                    color: Colors.pink,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TileTestScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Info Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue.shade600,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Her iki seçenek de yüksek performanslı indirme ve otomatik önbellek yönetimi sunar.',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -184,29 +229,30 @@ class HomeScreen extends StatelessWidget {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: _getDarkerColor(color),
-                      ),
+                            fontWeight: FontWeight.bold,
+                            color: _getDarkerColor(color),
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: _getLighterColor(color),
-                        fontWeight: FontWeight.w600,
-                      ),
+                            color: _getLighterColor(color),
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       description,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
+                            color: Colors.grey.shade600,
+                          ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: _getLighterColor(color), size: 20),
+              Icon(Icons.arrow_forward_ios,
+                  color: _getLighterColor(color), size: 20),
             ],
           ),
         ),
