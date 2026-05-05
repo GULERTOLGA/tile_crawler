@@ -3,7 +3,7 @@
   "packages": [
     {
       "name": "async",
-      "rootUri": "file:///Users/azad.erdogan/.pub-cache/hosted/pub.dev/async-2.13.0",
+      "rootUri": "file:///Users/azad.erdogan/.pub-cache/hosted/pub.dev/async-2.13.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -129,7 +129,7 @@
     },
     {
       "name": "source_span",
-      "rootUri": "file:///Users/azad.erdogan/.pub-cache/hosted/pub.dev/source_span-1.10.1",
+      "rootUri": "file:///Users/azad.erdogan/.pub-cache/hosted/pub.dev/source_span-1.10.2",
       "packageUri": "lib/",
       "languageVersion": "3.1"
     },
@@ -177,9 +177,9 @@
     },
     {
       "name": "vm_service",
-      "rootUri": "file:///Users/azad.erdogan/.pub-cache/hosted/pub.dev/vm_service-15.0.0",
+      "rootUri": "file:///Users/azad.erdogan/.pub-cache/hosted/pub.dev/vm_service-15.1.0",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.5"
     },
     {
       "name": "wkt_parser",

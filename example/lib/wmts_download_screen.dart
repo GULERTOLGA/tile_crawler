@@ -58,6 +58,13 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     text: 'GoogleMapsCompatible',
   );
   final _formatController = TextEditingController(text: 'jpg');
+  final _projectionCodeController = TextEditingController();
+  final _projectionWktController = TextEditingController();
+  final _resolutionsController = TextEditingController();
+  final _originXController = TextEditingController(text: '-180');
+  final _originYController = TextEditingController(text: '31999878');
+  final _tileSizeController = TextEditingController(text: '256');
+  final _customParamsController = TextEditingController();
 
   // Service type
   bool _useRestful = true;
@@ -86,13 +93,20 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     ),
     'NetGIS Plan1000': WMTSServiceConfig(
       name: 'NetGIS Plan1000',
-      url:
-          'https://ssltest.netcad.com.tr/netgisnew/wmts.ashx?NCWS=ALANYA_BELNETMAP6',
-      layer: 'HALIHAZIRTUM_ITRF',
+      url: 'https://ssltest.netcad.com.tr/netgisnew/wmts.ashx?NCWS=ALANYA5',
+      layer: 'Plan1000',
       style: 'default',
-      tileMatrixSet: 'HALIHAZIRTUM_ITRF_7933',
+      tileMatrixSet: 'Plan1000_7933',
       format: 'png',
       useRestful: false,
+      projectionCode: 'EPSG:7933',
+      projectionWkt:
+          'PROJCS["ITRF96 / TM33", GEOGCS["ITRF 1996", DATUM["International Terrestrial Reference Frame 1996", SPHEROID["GRS 1980", 6378137, 298.257222101, AUTHORITY["EPSG", "7019"]], AUTHORITY["EPSG", "6654"]], PRIMEM["Greenwich", 0, AUTHORITY["EPSG", "8901"]], UNIT["Degree", 0.0174532925199433, AUTHORITY["EPSG", "9102"]]], PROJECTION["Transverse_Mercator", AUTHORITY["EPSG", "9807"]], PARAMETER["Central_Meridian", 33], PARAMETER["Latitude_Of_Origin", 0], PARAMETER["Scale_Factor", 1], PARAMETER["False_Easting", 500000], PARAMETER["False_Northing", 0], UNIT["Metre", 1, AUTHORITY["EPSG", "9001"]], AUTHORITY["EPSG", "7933"]]',
+      resolutions:
+          '15624.984375,7812.4921875,3906.24609375,1953.123046875,976.5615234375,488.28076171875,244.140380859375,122.0701904296875,61.03509521484375,30.517547607421875,15.2587738037109375,7.62938690185546875,3.814693450927734375,1.9073467254638671875,0.95367336273193359375,0.47683668136596875,0.23841834068298359375,0.119209170341491796875',
+      originX: -180,
+      originY: 31999878,
+      tileSize: 256,
     ),
     'Custom WMTS': WMTSServiceConfig(
       name: 'Custom WMTS',
@@ -102,7 +116,15 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
       style: 'default',
       tileMatrixSet: 'HALIHAZIRTUM_ITRF_7933',
       format: 'png',
-      useRestful: true,
+      useRestful: false,
+      projectionCode: 'EPSG:7933',
+      projectionWkt:
+          'PROJCS["ITRF96 / TM33", GEOGCS["ITRF 1996", DATUM["International Terrestrial Reference Frame 1996", SPHEROID["GRS 1980", 6378137, 298.257222101, AUTHORITY["EPSG", "7019"]], AUTHORITY["EPSG", "6654"]], PRIMEM["Greenwich", 0, AUTHORITY["EPSG", "8901"]], UNIT["Degree", 0.0174532925199433, AUTHORITY["EPSG", "9102"]]], PROJECTION["Transverse_Mercator", AUTHORITY["EPSG", "9807"]], PARAMETER["Central_Meridian", 33], PARAMETER["Latitude_Of_Origin", 0], PARAMETER["Scale_Factor", 1], PARAMETER["False_Easting", 500000], PARAMETER["False_Northing", 0], UNIT["Metre", 1, AUTHORITY["EPSG", "9001"]], AUTHORITY["EPSG", "7933"]]',
+      resolutions:
+          '15624.984375,7812.4921875,3906.24609375,1953.123046875,976.5615234375,488.28076171875,244.140380859375,122.0701904296875,61.03509521484375,30.517547607421875,15.2587738037109375,7.62938690185546875,3.814693450927734375,1.9073467254638671875,0.95367336273193359375,0.47683668136596875,0.23841834068298359375,0.119209170341491796875',
+      originX: -180,
+      originY: 31999878,
+      tileSize: 256,
     ),
   };
 
@@ -131,6 +153,13 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     _styleController.dispose();
     _tileMatrixSetController.dispose();
     _formatController.dispose();
+    _projectionCodeController.dispose();
+    _projectionWktController.dispose();
+    _resolutionsController.dispose();
+    _originXController.dispose();
+    _originYController.dispose();
+    _tileSizeController.dispose();
+    _customParamsController.dispose();
     super.dispose();
   }
 
@@ -142,6 +171,13 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     _tileMatrixSetController.text = config.tileMatrixSet;
     _formatController.text = config.format;
     _useRestful = config.useRestful;
+    _projectionCodeController.text = config.projectionCode ?? '';
+    _projectionWktController.text = config.projectionWkt ?? '';
+    _resolutionsController.text = config.resolutions ?? '';
+    _originXController.text = config.originX?.toString() ?? '-180';
+    _originYController.text = config.originY?.toString() ?? '31999878';
+    _tileSizeController.text = config.tileSize?.toString() ?? '256';
+    _customParamsController.text = config.customParams ?? '';
   }
 
   void _resetDownloadStats() {
@@ -189,7 +225,55 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     try {
       late OfflineTileArchive crawler;
 
-      if (_useRestful) {
+      if (_usesProjectedWmts()) {
+        final projectionCode = _projectionCodeController.text.trim();
+        final projectionWkt = _projectionWktController.text.trim();
+        final projectionDef = _resolveProjectionDef(
+          projectionCode: projectionCode,
+          projectionWkt: projectionWkt,
+        );
+        if (projectionDef == null) {
+          throw StateError(
+            'Projeksiyon tanımı çözülemedi. Şimdilik EPSG:7933 destekleniyor. '
+            'projection alanına EPSG:7933 giriniz.',
+          );
+        }
+
+        final provider = CustomWMTSTileProvider(
+          urlTemplate: _urlController.text,
+          layer: _layerController.text,
+          style: _styleController.text,
+          tileMatrixSet: _tileMatrixSetController.text,
+          format: _formatController.text,
+          projectionCode: projectionCode,
+          projectionDef: projectionDef,
+          resolutions: _parseResolutions(_resolutionsController.text),
+          originX: double.parse(_originXController.text),
+          originY: double.parse(_originYController.text),
+          tileSize: int.parse(_tileSizeController.text),
+          customParams: _customParamsController.text.trim().isEmpty
+              ? null
+              : _customParamsController.text.trim(),
+          useRestful: _useRestful,
+        );
+
+        final options = EnhancedDownloadOptions(
+          topLeftLatLng: [
+            double.parse(_topLatController.text),
+            double.parse(_topLngController.text),
+          ],
+          bottomRightLatLng: [
+            double.parse(_bottomLatController.text),
+            double.parse(_bottomLngController.text),
+          ],
+          minZoomLevel: int.parse(_minZoomController.text),
+          maxZoomLevel: int.parse(_maxZoomController.text),
+          tileProvider: provider,
+          storageLayout: StorageLayout.sourceRelativePath,
+          downloadFolder: '${dir.path}/wmts_tiles',
+        );
+        crawler = OfflineTileArchive(options);
+      } else if (_useRestful) {
         // RESTful WMTS
         crawler = OfflineTileArchive.wmts(
           topLeftLatLng: [
@@ -261,6 +345,34 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
     }
   }
 
+  bool _usesProjectedWmts() => _projectionCodeController.text.trim().isNotEmpty;
+
+  List<double> _parseResolutions(String value) {
+    final parts = value
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) {
+      throw StateError('Resolution listesi bos olamaz.');
+    }
+    return parts.map(double.parse).toList(growable: false);
+  }
+
+  String? _resolveProjectionDef({
+    required String projectionCode,
+    required String projectionWkt,
+  }) {
+    final normalizedCode = projectionCode.toUpperCase();
+    if (normalizedCode == KnownProjections.epsg7933Code) {
+      return KnownProjections.epsg7933Def;
+    }
+    if (projectionWkt.contains('AUTHORITY["EPSG", "7933"]')) {
+      return KnownProjections.epsg7933Def;
+    }
+    return null;
+  }
+
   bool _validateInput() {
     try {
       final topLat = double.parse(_topLatController.text);
@@ -287,6 +399,19 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
       if (_urlController.text.isEmpty || _layerController.text.isEmpty) {
         _showErrorDialog('URL ve Layer alanları boş olamaz.');
         return false;
+      }
+
+      if (_usesProjectedWmts()) {
+        if (_resolutionsController.text.trim().isEmpty) {
+          _showErrorDialog(
+            'Projeksiyonlu WMTS için resolutions alanı zorunludur.',
+          );
+          return false;
+        }
+        double.parse(_originXController.text);
+        double.parse(_originYController.text);
+        int.parse(_tileSizeController.text);
+        _parseResolutions(_resolutionsController.text);
       }
 
       return true;
@@ -587,6 +712,90 @@ class _WMTSDownloadScreenState extends State<WMTSDownloadScreen>
                     controller: _formatController,
                     decoration: const InputDecoration(
                       labelText: 'Format',
+                      border: OutlineInputBorder(),
+                    ),
+                    enabled: !_isDownloading,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _projectionCodeController,
+              decoration: const InputDecoration(
+                labelText: 'Projection (orn: EPSG:7933)',
+                border: OutlineInputBorder(),
+              ),
+              enabled: !_isDownloading,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _projectionWktController,
+              decoration: const InputDecoration(
+                labelText: 'Projection WKT (opsiyonel)',
+                border: OutlineInputBorder(),
+              ),
+              enabled: !_isDownloading,
+              maxLines: 4,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _resolutionsController,
+              decoration: const InputDecoration(
+                labelText: 'Resolutions (virgulle)',
+                border: OutlineInputBorder(),
+              ),
+              enabled: !_isDownloading,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _originXController,
+                    decoration: const InputDecoration(
+                      labelText: 'Origin X',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    enabled: !_isDownloading,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _originYController,
+                    decoration: const InputDecoration(
+                      labelText: 'Origin Y',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    enabled: !_isDownloading,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _tileSizeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tile Size',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    enabled: !_isDownloading,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _customParamsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Custom Params (KVP)',
                       border: OutlineInputBorder(),
                     ),
                     enabled: !_isDownloading,
@@ -919,6 +1128,13 @@ class WMTSServiceConfig {
   final String tileMatrixSet;
   final String format;
   final bool useRestful;
+  final String? projectionCode;
+  final String? projectionWkt;
+  final String? resolutions;
+  final double? originX;
+  final double? originY;
+  final int? tileSize;
+  final String? customParams;
 
   WMTSServiceConfig({
     required this.name,
@@ -928,5 +1144,12 @@ class WMTSServiceConfig {
     required this.tileMatrixSet,
     required this.format,
     required this.useRestful,
+    this.projectionCode,
+    this.projectionWkt,
+    this.resolutions,
+    this.originX,
+    this.originY,
+    this.tileSize,
+    this.customParams,
   });
 }

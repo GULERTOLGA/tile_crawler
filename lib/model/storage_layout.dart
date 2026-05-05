@@ -10,6 +10,8 @@
 ///
 /// **Source-relative:** Uses [Tile.filePath] (e.g. WMTS layer/style/matrix/...).
 /// Matches “mirror server path segments” style archives; not flutter_map-default.
+/// NetGIS OnlineMapRaster offline packs use this layout: each GetTile URL maps to
+/// the same relative path as [wmtsArchiveRelativePathFromTileUrl] / local WMTS REST.
 enum StorageLayout {
   /// `z/x/y.ext` — Slippy Map / XYZ (flutter_map-friendly).
   slippyMapXyz,

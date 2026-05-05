@@ -19,6 +19,7 @@ export 'util/tile_url_helper.dart';
 export 'util/download_path.dart';
 export 'util/tile_content_type.dart';
 export 'util/tile_projection_registry.dart';
+export 'util/wmts_get_tile_path.dart';
 
 export 'model/tile.dart';
 export 'model/xyz_tile.dart' hide XYZ;

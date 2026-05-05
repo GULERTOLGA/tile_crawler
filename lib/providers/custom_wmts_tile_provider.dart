@@ -20,6 +20,7 @@ class CustomWMTSTileProvider extends TileProvider {
   final double originY;
   final int tileSize;
   final String? customParams;
+  final bool useRestful;
 
   /// CRS code registered with proj4dart (e.g. `EPSG:7933`).
   final String projectionCode;
@@ -42,6 +43,7 @@ class CustomWMTSTileProvider extends TileProvider {
     required this.projectionDef,
     this.tileSize = 256,
     this.customParams,
+    this.useRestful = false,
     String? name,
     TileProjectionRegistry? projectionRegistry,
   })  : _projectionRegistry =
@@ -138,6 +140,7 @@ class CustomWMTSTileProvider extends TileProvider {
           sid: sid,
           customParams: customParams,
           baseUrl: urlTemplate,
+          useRestful: useRestful,
         );
         tiles.add(tile);
       }
@@ -167,6 +170,7 @@ class CustomWMTSTileProvider extends TileProvider {
       'originY': originY,
       'tileSize': tileSize,
       'customParams': customParams,
+      'useRestful': useRestful,
       'projectionCode': projectionCode,
       'projectionDef': projectionDef,
     };
@@ -216,6 +220,7 @@ class CustomWMTSTile extends WMTSTile {
     this.sid,
     this.customParams,
     required this.baseUrl,
+    bool useRestful = false,
   }) : super(
           x: x,
           y: y,
@@ -224,11 +229,21 @@ class CustomWMTSTile extends WMTSTile {
           style: style,
           tileMatrixSet: tileMatrixSet,
           format: format,
-          useRestful: false, // Use KVP format
+          useRestful: useRestful,
         );
 
   @override
   String buildUrl(String urlTemplate) {
+    if (useRestful) {
+      final baseRestUrl = super.buildUrl(urlTemplate);
+      final additionalQuery = _buildAdditionalQuery();
+      if (additionalQuery.isEmpty) {
+        return baseRestUrl;
+      }
+      final separator = baseRestUrl.contains('?') ? '&' : '?';
+      return '$baseRestUrl$separator$additionalQuery';
+    }
+
     final params = <String, String>{
       'layer': layer,
       'style': style,
@@ -242,22 +257,7 @@ class CustomWMTSTile extends WMTSTile {
       'TileRow': y.toString(),
     };
 
-    // Add SID if provided
-    if (sid != null && sid!.isNotEmpty) {
-      params['@sid'] = sid!;
-    }
-
-    // Add custom parameters if provided
-    if (customParams != null && customParams!.isNotEmpty) {
-      // Parse custom params and add to the map
-      final customParamPairs = customParams!.split('&');
-      for (final pair in customParamPairs) {
-        final keyValue = pair.split('=');
-        if (keyValue.length == 2) {
-          params[keyValue[0]] = keyValue[1];
-        }
-      }
-    }
+    _appendAdditionalParams(params);
 
     // Build query string
     final queryString =
@@ -267,10 +267,32 @@ class CustomWMTSTile extends WMTSTile {
   }
 
   @override
-  String get filePath => '$zoomLevel/$x/$y.$format';
-
-  @override
   String get id => 'custom_wmts_${zoomLevel}_${x}_$y';
+
+  void _appendAdditionalParams(Map<String, String> params) {
+    if (sid != null && sid!.isNotEmpty) {
+      params['@sid'] = sid!;
+    }
+    if (customParams != null && customParams!.isNotEmpty) {
+      final customParamPairs = customParams!.split('&');
+      for (final pair in customParamPairs) {
+        final keyValue = pair.split('=');
+        if (keyValue.length == 2 &&
+            keyValue[0].isNotEmpty &&
+            keyValue[1].isNotEmpty) {
+          params[keyValue[0]] = keyValue[1];
+        }
+      }
+    }
+  }
+
+  String _buildAdditionalQuery() {
+    final params = <String, String>{};
+    _appendAdditionalParams(params);
+    return params.entries
+        .map((entry) => '${entry.key}=${Uri.encodeComponent(entry.value)}')
+        .join('&');
+  }
 
   @override
   Map<String, dynamic> toMap() {
@@ -294,6 +316,7 @@ class CustomWMTSTile extends WMTSTile {
       sid: map['sid'] as String?,
       customParams: map['customParams'] as String?,
       baseUrl: map['baseUrl'] as String,
+      useRestful: map['useRestful'] as bool? ?? false,
     );
   }
 
@@ -396,6 +419,7 @@ class CustomWMTSProviders {
     required String projectionDef,
     String? customParams,
     int tileSize = 256,
+    bool useRestful = false,
     String? name,
     TileProjectionRegistry? projectionRegistry,
   }) {
@@ -413,6 +437,7 @@ class CustomWMTSProviders {
       projectionDef: projectionDef,
       tileSize: tileSize,
       customParams: customParams,
+      useRestful: useRestful,
       name: name ?? 'Custom WMTS with Auth',
       projectionRegistry: projectionRegistry,
     );
